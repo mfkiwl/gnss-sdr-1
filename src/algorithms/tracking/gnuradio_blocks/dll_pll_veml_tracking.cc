@@ -813,31 +813,7 @@ bool dll_pll_veml_tracking::acquire_secondary()
 {
     // ******* preamble correlation ********
     int32_t corr_value = 0;
-    for (uint32_t i = 0; i < d_secondary_code_length; i++)
-        {
-            if (d_Prompt_circular_buffer[i].real() < 0.0)  // symbols clipping
-                {
-                    if (d_secondary_code_string->at(i) == '0')
-                        {
-                            corr_value++;
-                        }
-                    else
-                        {
-                            corr_value--;
-                        }
-                }
-            else
-                {
-                    if (d_secondary_code_string->at(i) == '0')
-                        {
-                            corr_value--;
-                        }
-                    else
-                        {
-                            corr_value++;
-                        }
-                }
-        }
+    volk_gnsssdr_32fc_8i_clip_and_correlate_32i(&corr_value, d_Prompt_circular_buffer.linearize(), d_secondary_code_string->c_str(), d_secondary_code_length);
 
     if (abs(corr_value) == static_cast<int32_t>(d_secondary_code_length))
         {
