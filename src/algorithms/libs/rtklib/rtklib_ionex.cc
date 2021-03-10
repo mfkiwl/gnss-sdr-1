@@ -19,34 +19,13 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * References:
  *     [1] S.Schear, W.Gurtner and J.Feltens, IONEX: The IONosphere Map EXchange
@@ -509,7 +488,7 @@ void readtec(const char *file, nav_t *nav, int opt)
     /* P1-P2 dcb */
     for (i = 0; i < MAXSAT; i++)
         {
-            nav->cbias[i][0] = SPEED_OF_LIGHT * dcb[i] * 1e-9; /* ns->m */
+            nav->cbias[i][0] = SPEED_OF_LIGHT_M_S * dcb[i] * 1e-9; /* ns->m */
         }
 }
 
@@ -643,13 +622,13 @@ int iondelay(gtime_t time, const tec_t *tec, const double *pos,
             if (opt & 2)
                 {
                     /* modified single layer mapping function (M-SLM) ref [2] */
-                    rp = tec->rb / (tec->rb + hion) * sin(0.9782 * (PI / 2.0 - azel[1]));
+                    rp = tec->rb / (tec->rb + hion) * sin(0.9782 * (GNSS_PI / 2.0 - azel[1]));
                     fs = 1.0 / sqrt(1.0 - rp * rp);
                 }
             if (opt & 1)
                 {
                     /* earth rotation correction (sun-fixed coordinate) */
-                    posp[1] += 2.0 * PI * timediff(time, tec->time) / 86400.0;
+                    posp[1] += 2.0 * GNSS_PI * timediff(time, tec->time) / 86400.0;
                 }
             /* interpolate tec grid data */
             if (!interptec(tec, i, posp, &vtec, &rms))

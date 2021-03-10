@@ -19,39 +19,19 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  *----------------------------------------------------------------------------*/
 
 #include "rtklib_rtkcmn.h"
 #include <glog/logging.h>
+#include <cassert>
 #include <cstring>
 #include <dirent.h>
 #include <iostream>
@@ -294,19 +274,19 @@ int satno(int sys, int prn)
                 }
             return NSATGPS + NSATGLO + NSATGAL + prn - MINPRNQZS + 1;
         case SYS_BDS:
-            if (prn < MINPRNBDS || MAXPRNBDS < prn)
+            if (MAXPRNBDS < prn)
                 {
                     return 0;
                 }
             return NSATGPS + NSATGLO + NSATGAL + NSATQZS + prn - MINPRNBDS + 1;
         case SYS_IRN:
-            if (prn < MINPRNIRN || MAXPRNIRN < prn)
+            if (MAXPRNIRN < prn)
                 {
                     return 0;
                 }
             return NSATGPS + NSATGLO + NSATGAL + NSATQZS + NSATBDS + prn - MINPRNIRN + 1;
         case SYS_LEO:
-            if (prn < MINPRNLEO || MAXPRNLEO < prn)
+            if (MAXPRNLEO < prn)
                 {
                     return 0;
                 }
@@ -463,6 +443,11 @@ int satid2no(const char *id)
         default:
             return 0;
         }
+    if (prn <= 0 || prn > MAXSAT)
+        {
+            return 0;
+        }
+
     return satno(sys, prn);
 }
 
@@ -1438,6 +1423,7 @@ void matfprint(const double A[], int n, int m, int p, int q, FILE *fp)
         }
 }
 
+
 void matsprint(const double A[], int n, int m, int p, int q, std::string &buffer)
 {
     int i;
@@ -1748,7 +1734,7 @@ double timediff(gtime_t t1, gtime_t t2)
  *-----------------------------------------------------------------------------*/
 double timediffweekcrossover(gtime_t t1, gtime_t t2)
 {
-    // as stated in IS-GPS-200J table 20-IV footnote among other parts of the ICD,
+    // as stated in IS-GPS-200L table 20-IV footnote among other parts of the ICD,
     // if tk=(t - toe) > 302400s then tk = tk - s
     // if tk=(t - toe) < -302400s then tk = tk + 604800s
     double tk = difftime(t1.time, t2.time) + t1.sec - t2.sec;
@@ -2044,7 +2030,7 @@ double utc2gmst(gtime_t t, double ut1_utc)
     gmst0 = 24110.54841 + 8640184.812866 * t1 + 0.093104 * t2 - 6.2E-6 * t3;
     gmst = gmst0 + 1.002737909350795 * ut;
 
-    return fmod(gmst, 86400.0) * PI / 43200.0; /* 0 <= gmst <= 2*PI */
+    return fmod(gmst, 86400.0) * GNSS_PI / 43200.0; /* 0 <= gmst <= 2*PI */
 }
 
 
@@ -2114,7 +2100,7 @@ double time2doy(gtime_t t)
  * args   : int   week       I   not-adjusted gps week number
  * return : adjusted gps week number
  *-----------------------------------------------------------------------------*/
-int adjgpsweek(int week, int custom_year)
+int adjgpsweek(int week, bool pre_2009_file)
 {
     //    int w;
     //    if (week < 512)
@@ -2128,7 +2114,12 @@ int adjgpsweek(int week, int custom_year)
     //            w = week + 1024;  //add weeks from 6-january-1980 to week rollover in 21 august 1999
     //        }
     int w;
-    if (custom_year == 0)
+    if (week > 1023)
+        {
+            return week;
+        }
+
+    if (pre_2009_file == false)
         {
             (void)time2gpst(utc2gpst(timeget()), &w);
             if (w < 1560)
@@ -2139,18 +2130,7 @@ int adjgpsweek(int week, int custom_year)
         }
     else
         {
-            if (custom_year >= 2019)
-                {
-                    w = week + 2048;  //add weeks from 6-january-1980 to week rollover in 6 april 2019
-                }
-            else if (custom_year < 2019 and custom_year >= 1999)
-                {
-                    w = week + 1024;  //add weeks from 6-january-1980 to week rollover in 21 august 1999
-                }
-            else
-                {
-                    w = week;  //no rollover
-                }
+            w = week + 1024;  // add weeks from 6-january-1980 to week rollover in 21 august 1999
             return w;
         }
 }
@@ -2277,7 +2257,7 @@ void ecef2pos(const double *r, double *pos)
             v = RE_WGS84 / sqrt(1.0 - e2 * sinp * sinp);
             z = r[2] + v * e2 * sinp;
         }
-    pos[0] = r2 > 1e-12 ? atan(z / sqrt(r2)) : (r[2] > 0.0 ? PI / 2.0 : -PI / 2.0);
+    pos[0] = r2 > 1e-12 ? atan(z / sqrt(r2)) : (r[2] > 0.0 ? GNSS_PI / 2.0 : -GNSS_PI / 2.0);
     pos[1] = r2 > 1e-12 ? atan2(r[1], r[0]) : 0.0;
     pos[2] = sqrt(r2 + z * z) - v;
 }
@@ -2423,7 +2403,7 @@ void ast_args(double t, double *f)
                 {
                     f[i] += fc[i][j + 1] * tt[j];
                 }
-            f[i] = fmod(f[i] * AS2R, 2.0 * PI);
+            f[i] = fmod(f[i] * AS2R, 2.0 * GNSS_PI);
         }
 }
 
@@ -2716,6 +2696,20 @@ void addpcv(const pcv_t *pcv, pcvs_t *pcvs)
 }
 
 
+/* strncpy without truncation ------------------------------------------------*/
+char *strncpy_no_trunc(char *out, size_t outsz, const char *in, size_t insz)
+{
+    assert(outsz > 0);
+    while (--outsz > 0 && insz > 0 && *in)
+        {
+            *out++ = *in++;
+            insz--;
+        }
+    *out = 0;
+    return out;
+}
+
+
 /* read ngs antenna parameter file -------------------------------------------*/
 int readngspcv(const char *file, pcvs_t *pcvs)
 {
@@ -2745,7 +2739,7 @@ int readngspcv(const char *file, pcvs_t *pcvs)
             if (++n == 1)
                 {
                     pcv = pcv0;
-                    strncpy(pcv.type, buff, 61);
+                    strncpy_no_trunc(pcv.type, 61, buff, 256);
                     pcv.type[61] = '\0';
                 }
             else if (n == 2)
@@ -3169,7 +3163,6 @@ int readblq(const char *file, const char *sta, double *odisp)
     sscanf(sta, "%16s", staname);
     for (p = staname; (*p = static_cast<char>(toupper(static_cast<int>(*p)))); p++)
         {
-            ;
         }
 
     if (!(fp = fopen(file, "re")))
@@ -3190,7 +3183,6 @@ int readblq(const char *file, const char *sta, double *odisp)
                 }
             for (p = name; (*p = static_cast<char>(toupper(static_cast<int>(*p)))); p++)
                 {
-                    ;
                 }
             if (strcmp(name, staname) != 0)
                 {
@@ -3338,8 +3330,8 @@ int geterp(const erp_t *erp, gtime_t time, double *erpv)
 /* compare ephemeris ---------------------------------------------------------*/
 int cmpeph(const void *p1, const void *p2)
 {
-    auto *q1 = static_cast<const eph_t *>(p1);
-    auto *q2 = static_cast<const eph_t *>(p2);
+    const auto *q1 = static_cast<const eph_t *>(p1);
+    const auto *q2 = static_cast<const eph_t *>(p2);
     return q1->ttr.time != q2->ttr.time ? static_cast<int>(q1->ttr.time - q2->ttr.time) : (q1->toe.time != q2->toe.time ? static_cast<int>(q1->toe.time - q2->toe.time) : q1->sat - q2->sat);
 }
 
@@ -3388,8 +3380,8 @@ void uniqeph(nav_t *nav)
 /* compare glonass ephemeris -------------------------------------------------*/
 int cmpgeph(const void *p1, const void *p2)
 {
-    auto *q1 = static_cast<const geph_t *>(p1);
-    auto *q2 = static_cast<const geph_t *>(p2);
+    const auto *q1 = static_cast<const geph_t *>(p1);
+    const auto *q2 = static_cast<const geph_t *>(p2);
     return q1->tof.time != q2->tof.time ? static_cast<int>(q1->tof.time - q2->tof.time) : (q1->toe.time != q2->toe.time ? static_cast<int>(q1->toe.time - q2->toe.time) : q1->sat - q2->sat);
 }
 
@@ -3439,8 +3431,8 @@ void uniqgeph(nav_t *nav)
 /* compare sbas ephemeris ----------------------------------------------------*/
 int cmpseph(const void *p1, const void *p2)
 {
-    auto *q1 = static_cast<const seph_t *>(p1);
-    auto *q2 = static_cast<const seph_t *>(p2);
+    const auto *q1 = static_cast<const seph_t *>(p1);
+    const auto *q2 = static_cast<const seph_t *>(p2);
     return q1->tof.time != q2->tof.time ? static_cast<int>(q1->tof.time - q2->tof.time) : (q1->t0.time != q2->t0.time ? static_cast<int>(q1->t0.time - q2->t0.time) : q1->sat - q2->sat);
 }
 
@@ -3517,8 +3509,8 @@ void uniqnav(nav_t *nav)
 /* compare observation data -------------------------------------------------*/
 int cmpobs(const void *p1, const void *p2)
 {
-    auto *q1 = static_cast<const obsd_t *>(p1);
-    auto *q2 = static_cast<const obsd_t *>(p2);
+    const auto *q1 = static_cast<const obsd_t *>(p1);
+    const auto *q2 = static_cast<const obsd_t *>(p2);
     double tt = timediff(q1->time, q2->time);
     if (fabs(tt) > DTTOL)
         {
@@ -4372,58 +4364,58 @@ double satwavelen(int sat, int frq, const nav_t *nav)
                                 {
                                     continue;
                                 }
-                            return SPEED_OF_LIGHT / (freq_glo[frq] + dfrq_glo[frq] * nav->geph[i].frq);
+                            return SPEED_OF_LIGHT_M_S / (freq_glo[frq] + dfrq_glo[frq] * nav->geph[i].frq);
                         }
                 }
             else if (frq == 2)
                 { /* L3 */
-                    return SPEED_OF_LIGHT / FREQ3_GLO;
+                    return SPEED_OF_LIGHT_M_S / FREQ3_GLO;
                 }
         }
     else if (sys == SYS_BDS)
         {
             if (frq == 0)
                 {
-                    return SPEED_OF_LIGHT / FREQ1_BDS; /* B1 */
+                    return SPEED_OF_LIGHT_M_S / FREQ1_BDS; /* B1 */
                 }
             if (frq == 1)
                 {
-                    return SPEED_OF_LIGHT / FREQ2_BDS; /* B2 */
+                    return SPEED_OF_LIGHT_M_S / FREQ2_BDS; /* B2 */
                 }
             if (frq == 2)
                 {
-                    return SPEED_OF_LIGHT / FREQ3_BDS; /* B3 */
+                    return SPEED_OF_LIGHT_M_S / FREQ3_BDS; /* B3 */
                 }
         }
     else
         {
             if (frq == 0)
                 {
-                    return SPEED_OF_LIGHT / FREQ1; /* L1/E1 */
+                    return SPEED_OF_LIGHT_M_S / FREQ1; /* L1/E1 */
                 }
             if (frq == 1)
                 {
-                    return SPEED_OF_LIGHT / FREQ2; /* L2 */
+                    return SPEED_OF_LIGHT_M_S / FREQ2; /* L2 */
                 }
             if (frq == 2)
                 {
-                    return SPEED_OF_LIGHT / FREQ5; /* L5/E5a */
+                    return SPEED_OF_LIGHT_M_S / FREQ5; /* L5/E5a */
                 }
             if (frq == 3)
                 {
-                    return SPEED_OF_LIGHT / FREQ6; /* L6/LEX */
+                    return SPEED_OF_LIGHT_M_S / FREQ6; /* L6/LEX */
                 }
             if (frq == 4)
                 {
-                    return SPEED_OF_LIGHT / FREQ7; /* E5b */
+                    return SPEED_OF_LIGHT_M_S / FREQ7; /* E5b */
                 }
             if (frq == 5)
                 {
-                    return SPEED_OF_LIGHT / FREQ8; /* E5a+b */
+                    return SPEED_OF_LIGHT_M_S / FREQ8; /* E5a+b */
                 }
             if (frq == 6)
                 {
-                    return SPEED_OF_LIGHT / FREQ9; /* S */
+                    return SPEED_OF_LIGHT_M_S / FREQ9; /* S */
                 }
         }
     return 0.0;
@@ -4456,7 +4448,7 @@ double geodist(const double *rs, const double *rr, double *e)
         {
             e[i] /= r;
         }
-    return r + DEFAULT_OMEGA_EARTH_DOT * (rs[0] * rr[1] - rs[1] * rr[0]) / SPEED_OF_LIGHT;
+    return r + GNSS_OMEGA_EARTH_DOT * (rs[0] * rr[1] - rs[1] * rr[0]) / SPEED_OF_LIGHT_M_S;
 }
 
 
@@ -4471,7 +4463,7 @@ double geodist(const double *rs, const double *rr, double *e)
 double satazel(const double *pos, const double *e, double *azel)
 {
     double az = 0.0;
-    double el = PI / 2.0;
+    double el = GNSS_PI / 2.0;
     double enu[3];
 
     if (pos[2] > -RE_WGS84)
@@ -4480,7 +4472,7 @@ double satazel(const double *pos, const double *e, double *azel)
             az = dot(enu, enu, 2) < 1e-12 ? 0.0 : atan2(enu[0], enu[1]);
             if (az < 0.0)
                 {
-                    az += 2 * PI;
+                    az += 2 * GNSS_PI;
                 }
             el = asin(enu[2]);
         }
@@ -4578,10 +4570,10 @@ double ionmodel(gtime_t t, const double *ion, const double *pos,
         }
 
     /* earth centered angle (semi-circle) */
-    psi = 0.0137 / (azel[1] / PI + 0.11) - 0.022;
+    psi = 0.0137 / (azel[1] / GNSS_PI + 0.11) - 0.022;
 
     /* subionospheric latitude/longitude (semi-circle) */
-    phi = pos[0] / PI + psi * cos(azel[0]);
+    phi = pos[0] / GNSS_PI + psi * cos(azel[0]);
     if (phi > 0.416)
         {
             phi = 0.416;
@@ -4590,26 +4582,26 @@ double ionmodel(gtime_t t, const double *ion, const double *pos,
         {
             phi = -0.416;
         }
-    lam = pos[1] / PI + psi * sin(azel[0]) / cos(phi * PI);
+    lam = pos[1] / GNSS_PI + psi * sin(azel[0]) / cos(phi * GNSS_PI);
 
     /* geomagnetic latitude (semi-circle) */
-    phi += 0.064 * cos((lam - 1.617) * PI);
+    phi += 0.064 * cos((lam - 1.617) * GNSS_PI);
 
     /* local time (s) */
     tt = 43200.0 * lam + time2gpst(t, &week);
     tt -= floor(tt / 86400.0) * 86400.0; /* 0 <= tt<86400 */
 
     /* slant factor */
-    f = 1.0 + 16.0 * pow(0.53 - azel[1] / PI, 3.0);
+    f = 1.0 + 16.0 * pow(0.53 - azel[1] / GNSS_PI, 3.0);
 
     /* ionospheric delay */
     amp = ion[0] + phi * (ion[1] + phi * (ion[2] + phi * ion[3]));
     per = ion[4] + phi * (ion[5] + phi * (ion[6] + phi * ion[7]));
     amp = amp < 0.0 ? 0.0 : amp;
     per = per < 72000.0 ? 72000.0 : per;
-    x = 2.0 * PI * (tt - 50400.0) / per;
+    x = 2.0 * GNSS_PI * (tt - 50400.0) / per;
 
-    return SPEED_OF_LIGHT * f * (fabs(x) < 1.57 ? 5E-9 + amp * (1.0 + x * x * (-0.5 + x * x / 24.0)) : 5E-9);
+    return SPEED_OF_LIGHT_M_S * f * (fabs(x) < 1.57 ? 5E-9 + amp * (1.0 + x * x * (-0.5 + x * x / 24.0)) : 5E-9);
 }
 
 
@@ -4625,7 +4617,7 @@ double ionmapf(const double *pos, const double *azel)
         {
             return 1.0;
         }
-    return 1.0 / cos(asin((RE_WGS84 + pos[2]) / (RE_WGS84 + HION) * sin(PI / 2.0 - azel[1])));
+    return 1.0 / cos(asin((RE_WGS84 + pos[2]) / (RE_WGS84 + HION) * sin(GNSS_PI / 2.0 - azel[1])));
 }
 
 
@@ -4650,16 +4642,16 @@ double ionppp(const double *pos, const double *azel, double re,
     double tanap;
 
     rp = re / (re + hion) * cos(azel[1]);
-    ap = PI / 2.0 - azel[1] - asin(rp);
+    ap = GNSS_PI / 2.0 - azel[1] - asin(rp);
     sinap = sin(ap);
     tanap = tan(ap);
     cosaz = cos(azel[0]);
     posp[0] = asin(sin(pos[0]) * cos(ap) + cos(pos[0]) * sinap * cosaz);
 
-    if ((pos[0] > 70.0 * D2R && tanap * cosaz > tan(PI / 2.0 - pos[0])) ||
-        (pos[0] < -70.0 * D2R && -tanap * cosaz > tan(PI / 2.0 + pos[0])))
+    if ((pos[0] > 70.0 * D2R && tanap * cosaz > tan(GNSS_PI / 2.0 - pos[0])) ||
+        (pos[0] < -70.0 * D2R && -tanap * cosaz > tan(GNSS_PI / 2.0 + pos[0])))
         {
-            posp[1] = pos[1] + PI - asin(sinap * sin(azel[0]) / cos(posp[0]));
+            posp[1] = pos[1] + GNSS_PI - asin(sinap * sin(azel[0]) / cos(posp[0]));
         }
     else
         {
@@ -4702,7 +4694,7 @@ double tropmodel(gtime_t time __attribute__((unused)), const double *pos, const 
     e = 6.108 * humi * exp((17.15 * temp - 4684.0) / (temp - 38.45));
 
     /* saastamoninen model */
-    z = PI / 2.0 - azel[1];
+    z = GNSS_PI / 2.0 - azel[1];
     trph = 0.0022768 * pres / (1.0 - 0.00266 * cos(2.0 * pos[0]) - 0.00028 * hgt / 1e3) / cos(z);
     trpw = 0.002277 * (1255.0 / temp + 0.05) * e / cos(z);
     return trph + trpw;
@@ -4772,7 +4764,7 @@ double nmf(gtime_t time, const double pos[], const double azel[],
     /* year from doy 28, added half a year for southern latitudes */
     y = (time2doy(time) - 28.0) / 365.25 + (lat < 0.0 ? 0.5 : 0.0);
 
-    cosy = cos(2.0 * PI * y);
+    cosy = cos(2.0 * GNSS_PI * y);
     lat = fabs(lat);
 
     for (i = 0; i < 3; i++)
@@ -4828,7 +4820,7 @@ double tropmapf(gtime_t time, const double pos[], const double azel[],
     lat = pos[0];
     lon = pos[1];
     hgt = pos[2] - geoidh(pos); /* height in m (mean sea level) */
-    zd = PI / 2.0 - azel[1];
+    zd = GNSS_PI / 2.0 - azel[1];
 
     /* call GMF */
     gmf_(&mjd, &lat, &lon, &hgt, &zd, &gmfh, &gmfw);
@@ -5419,7 +5411,7 @@ void windupcorr(gtime_t time, const double *rs, const double *rr, double *phw)
         {
             cosp = 1.0;
         }
-    ph = acos(cosp) / 2.0 / PI;
+    ph = acos(cosp) / 2.0 / GNSS_PI;
     cross3(ds, dr, drs);
     if (dot(ek, drs, 3) < 0.0)
         {

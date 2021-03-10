@@ -19,38 +19,17 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  *
  * References :
- *     [1] IS-GPS-200D, Navstar GPS Space Segment/Navigation User Interfaces,
+ *     [1] IS-GPS-200L, Navstar GPS Space Segment/Navigation User Interfaces,
  *         7 March, 2006
  *     [2] RTCA/DO-229C, Minimum operational performanc standards for global
  *         positioning system/wide area augmentation system airborne equipment,
@@ -73,12 +52,14 @@
  *     [10] GLONASS/GPS/Galileo/Compass/SBAS NV08C receiver series BINR interface
  *         protocol specification ver.1.3, August, 2012
  *
- *----------------------------------------------------------------------------*/
+ * -----------------------------------------------------------------------------
+ */
 
-#ifndef GNSS_SDR_RTKLIB_RTKCMN_H_
-#define GNSS_SDR_RTKLIB_RTKCMN_H_
+#ifndef GNSS_SDR_RTKLIB_RTKCMN_H
+#define GNSS_SDR_RTKLIB_RTKCMN_H
 
 #include "rtklib.h"
+#include <cstddef>
 #include <string>
 
 
@@ -116,7 +97,7 @@
         }                                            \
     while (0)
 
-
+char *strncpy_no_trunc(char *out, size_t outsz, const char *in, size_t insz);
 void fatalerr(const char *format, ...);
 int satno(int sys, int prn);
 int satsys(int sat, int *prn);
@@ -189,7 +170,7 @@ double utc2gmst(gtime_t t, double ut1_utc);
 void time2str(gtime_t t, char *s, int n);
 char *time_str(gtime_t t, int n);
 double time2doy(gtime_t t);
-int adjgpsweek(int week, int custom_year);
+int adjgpsweek(int week, bool pre_2009_file = false);
 unsigned int tickget();
 void sleepms(int ms);
 void deg2dms(double deg, double *dms, int ndec);
@@ -286,4 +267,4 @@ int rtk_uncompress(const char *file, char *uncfile);
 int expath(const char *path, char *paths[], int nmax);
 void windupcorr(gtime_t time, const double *rs, const double *rr, double *phw);
 
-#endif /* GNSS_SDR_RTKLIB_RTKCMN_H_ */
+#endif  // GNSS_SDR_RTKLIB_RTKCMN_H

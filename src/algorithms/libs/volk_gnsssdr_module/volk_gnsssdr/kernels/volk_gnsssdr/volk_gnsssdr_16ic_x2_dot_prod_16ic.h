@@ -8,29 +8,15 @@
  * VOLK_GNSSSDR kernel that multiplies two 16 bits vectors (8 bits the real part
  * and 8 bits the imaginary part) and accumulates them
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https:// www.gnu.org/licenses/>.
- *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 /*!
@@ -296,7 +282,6 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_u_axv2(lv_16sc_t* out, con
             result = _mm256_or_si256(realcacc, imagcacc);
 
             _mm256_storeu_si256((__m256i*)dotProductVector, result);  // Store the results back into the dot product vector
-            _mm256_zeroupper();
 
             for (i = 0; i < 8; ++i)
                 {
@@ -374,7 +359,6 @@ static inline void volk_gnsssdr_16ic_x2_dot_prod_16ic_a_axv2(lv_16sc_t* out, con
             result = _mm256_or_si256(realcacc, imagcacc);
 
             _mm256_store_si256((__m256i*)dotProductVector, result);  // Store the results back into the dot product vector
-            _mm256_zeroupper();
 
             for (i = 0; i < 8; ++i)
                 {

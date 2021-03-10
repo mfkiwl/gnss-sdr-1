@@ -19,37 +19,17 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  *
- *----------------------------------------------------------------------------*/
+ * -----------------------------------------------------------------------------
+ */
 
 
 #include "rtklib_rtcm3.h"
@@ -179,7 +159,6 @@ double adjcp(rtcm_t *rtcm, int sat, int freq, double cp)
 {
     if (rtcm->cp[sat - 1][freq] == 0.0)
         {
-            ;
         }
     else if (cp < rtcm->cp[sat - 1][freq] - 750.0)
         {
@@ -896,7 +875,7 @@ int decode_type1010(rtcm_t *rtcm)
             if (ppr1 != static_cast<int>(0xFFF80000))
                 {
                     rtcm->obs.data[index].P[0] = pr1;
-                    lam1 = SPEED_OF_LIGHT / (FREQ1_GLO + DFRQ1_GLO * (freq - 7));
+                    lam1 = SPEED_OF_LIGHT_M_S / (FREQ1_GLO + DFRQ1_GLO * (freq - 7));
                     cp1 = adjcp(rtcm, sat, 0, ppr1 * 0.0005 / lam1);
                     rtcm->obs.data[index].L[0] = pr1 / lam1 + cp1;
                 }
@@ -1000,7 +979,7 @@ int decode_type1012(rtcm_t *rtcm)
             pr1 = pr1 * 0.02 + amb * PRUNIT_GLO;
             if (ppr1 != static_cast<int>(0xFFF80000))
                 {
-                    lam1 = SPEED_OF_LIGHT / (FREQ1_GLO + DFRQ1_GLO * (freq - 7));
+                    lam1 = SPEED_OF_LIGHT_M_S / (FREQ1_GLO + DFRQ1_GLO * (freq - 7));
                     rtcm->obs.data[index].P[0] = pr1;
                     cp1 = adjcp(rtcm, sat, 0, ppr1 * 0.0005 / lam1);
                     rtcm->obs.data[index].L[0] = pr1 / lam1 + cp1;
@@ -1015,7 +994,7 @@ int decode_type1012(rtcm_t *rtcm)
                 }
             if (ppr2 != static_cast<int>(0xFFF80000))
                 {
-                    lam2 = SPEED_OF_LIGHT / (FREQ2_GLO + DFRQ2_GLO * (freq - 7));
+                    lam2 = SPEED_OF_LIGHT_M_S / (FREQ2_GLO + DFRQ2_GLO * (freq - 7));
                     cp2 = adjcp(rtcm, sat, 1, ppr2 * 0.0005 / lam2);
                     rtcm->obs.data[index].L[1] = pr1 / lam2 + cp2;
                 }
@@ -1036,7 +1015,7 @@ int decode_type1013(rtcm_t *rtcm __attribute__((unused)))
 
 
 /* decode type 1019: gps ephemerides -----------------------------------------*/
-int decode_type1019(rtcm_t *rtcm, int custom_year)
+int decode_type1019(rtcm_t *rtcm, bool pre_2009_file)
 {
     eph_t eph = {0, -1, -1, 0, 0, 0, 0, 0, {0, 0.0}, {0, 0.0}, {0, 0.0},
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -1136,7 +1115,7 @@ int decode_type1019(rtcm_t *rtcm, int custom_year)
             return -1;
         }
     eph.sat = sat;
-    eph.week = adjgpsweek(week, custom_year);
+    eph.week = adjgpsweek(week, pre_2009_file);
     eph.toe = gpst2time(eph.week, eph.toes);
     eph.toc = gpst2time(eph.week, toc);
     eph.ttr = rtcm->time;
@@ -1535,7 +1514,7 @@ int decode_type1039(rtcm_t *rtcm __attribute__((unused)))
 
 
 /* decode type 1044: qzss ephemerides (ref [15]) -----------------------------*/
-int decode_type1044(rtcm_t *rtcm, int custom_year)
+int decode_type1044(rtcm_t *rtcm, bool pre_2009_file)
 {
     eph_t eph = {0, -1, -1, 0, 0, 0, 0, 0, {0, 0.0}, {0, 0.0}, {0, 0.0},
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -1628,7 +1607,7 @@ int decode_type1044(rtcm_t *rtcm, int custom_year)
             return -1;
         }
     eph.sat = sat;
-    eph.week = adjgpsweek(week, custom_year);
+    eph.week = adjgpsweek(week, pre_2009_file);
     eph.toe = gpst2time(eph.week, eph.toes);
     eph.toc = gpst2time(eph.week, toc);
     eph.ttr = rtcm->time;
@@ -1881,7 +1860,6 @@ int decode_type1047(rtcm_t *rtcm)
     eph_t eph = {0, -1, -1, 0, 0, 0, 0, 0, {0, 0.0}, {0, 0.0}, {0, 0.0},
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, {0.0}, {0.0}, 0.0, 0.0};
-    ;
     double toc;
     double sqrtA;
     char *msg;
@@ -3226,8 +3204,8 @@ void save_msm_obs(rtcm_t *rtcm, int sys, msm_h_t *h, const double *r,
                             if (sys == SYS_GLO && ex && ex[i] <= 13)
                                 {
                                     fn = ex[i] - 7;
-                                    wl = SPEED_OF_LIGHT / ((freq[k] == 2 ? FREQ2_GLO : FREQ1_GLO) +
-                                                              (freq[k] == 2 ? DFRQ2_GLO : DFRQ1_GLO) * fn);
+                                    wl = SPEED_OF_LIGHT_M_S / ((freq[k] == 2 ? FREQ2_GLO : FREQ1_GLO) +
+                                                                  (freq[k] == 2 ? DFRQ2_GLO : DFRQ1_GLO) * fn);
                                 }
                             /* pseudorange (m) */
                             if (r[i] != 0.0 && pr[j] > -1E12)

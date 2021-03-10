@@ -19,46 +19,26 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  *
  * References :
- *     [1] S.Hilla, The Extended Standard Product 3 Orbit Format (SP3-c),
- *         12 February, 2007
- *     [2] J.Ray, W.Gurtner, RINEX Extensions to Handle Clock Information,
- *         27 August, 1998
- *     [3] D.D.McCarthy, IERS Technical Note 21, IERS Conventions 1996, July 1996
- *     [4] D.A.Vallado, Fundamentals of Astrodynamics and Applications 2nd ed,
- *         Space Technology Library, 2004
+ *    [1] S.Hilla, The Extended Standard Product 3 Orbit Format (SP3-c),
+ *        12 February, 2007
+ *    [2] J.Ray, W.Gurtner, RINEX Extensions to Handle Clock Information,
+ *        27 August, 1998
+ *    [3] D.D.McCarthy, IERS Technical Note 21, IERS Conventions 1996, July 1996
+ *    [4] D.A.Vallado, Fundamentals of Astrodynamics and Applications 2nd ed,
+ *        Space Technology Library, 2004
  *
- *----------------------------------------------------------------------------*/
+ * -----------------------------------------------------------------------------
+ */
 
 #include "rtklib_preceph.h"
 #include "rtklib_rtkcmn.h"
@@ -324,8 +304,8 @@ void readsp3b(FILE *fp, char type, int *sats __attribute__((unused)), int ns, co
 /* compare precise ephemeris -------------------------------------------------*/
 int cmppeph(const void *p1, const void *p2)
 {
-    auto *q1 = static_cast<const peph_t *>(p1);
-    auto *q2 = static_cast<const peph_t *>(p2);
+    const auto *q1 = static_cast<const peph_t *>(p1);
+    const auto *q2 = static_cast<const peph_t *>(p2);
     double tt = timediff(q1->time, q2->time);
     return tt < -1e-9 ? -1 : (tt > 1e-9 ? 1 : q1->index - q2->index);
 }
@@ -560,12 +540,12 @@ int readdcbf(const char *file, nav_t *nav, const sta_t *sta)
                     if (i < MAXRCV)
                         {
                             j = !strcmp(str1, "G") ? 0 : 1;
-                            nav->rbias[i][j][type - 1] = cbias * 1e-9 * SPEED_OF_LIGHT; /* ns -> m */
+                            nav->rbias[i][j][type - 1] = cbias * 1e-9 * SPEED_OF_LIGHT_M_S; /* ns -> m */
                         }
                 }
             else if ((sat = satid2no(str1)))
-                {                                                                  /* satellite dcb */
-                    nav->cbias[sat - 1][type - 1] = cbias * 1e-9 * SPEED_OF_LIGHT; /* ns -> m */
+                {                                                                      /* satellite dcb */
+                    nav->cbias[sat - 1][type - 1] = cbias * 1e-9 * SPEED_OF_LIGHT_M_S; /* ns -> m */
                 }
         }
     fclose(fp);
@@ -713,8 +693,8 @@ int pephpos(gtime_t time, int sat, const nav_t *nav, double *rs,
             p[1][j] = pos[1];
 #else
             /* correciton for earh rotation ver.2.4.0 */
-            sinl = sin(DEFAULT_OMEGA_EARTH_DOT * t[j]);
-            cosl = cos(DEFAULT_OMEGA_EARTH_DOT * t[j]);
+            sinl = sin(GNSS_OMEGA_EARTH_DOT * t[j]);
+            cosl = cos(GNSS_OMEGA_EARTH_DOT * t[j]);
             p[0][j] = cosl * pos[0] - sinl * pos[1];
             p[1][j] = sinl * pos[0] + cosl * pos[1];
 #endif
@@ -753,14 +733,14 @@ int pephpos(gtime_t time, int sat, const nav_t *nav, double *rs,
         {
             if ((dts[0] = c[0]) != 0.0)
                 {
-                    std = nav->peph[index].std[sat - 1][3] * SPEED_OF_LIGHT - EXTERR_CLK * t[0];
+                    std = nav->peph[index].std[sat - 1][3] * SPEED_OF_LIGHT_M_S - EXTERR_CLK * t[0];
                 }
         }
     else if (t[1] >= 0.0)
         {
             if ((dts[0] = c[1]) != 0.0)
                 {
-                    std = nav->peph[index + 1].std[sat - 1][3] * SPEED_OF_LIGHT + EXTERR_CLK * t[1];
+                    std = nav->peph[index + 1].std[sat - 1][3] * SPEED_OF_LIGHT_M_S + EXTERR_CLK * t[1];
                 }
         }
     else if (c[0] != 0.0 && c[1] != 0.0)
@@ -829,7 +809,7 @@ int pephclk(gtime_t time, int sat, const nav_t *nav, double *dts,
                 {
                     return 0;
                 }
-            std = nav->pclk[index].std[sat - 1][0] * SPEED_OF_LIGHT - EXTERR_CLK * t[0];
+            std = nav->pclk[index].std[sat - 1][0] * SPEED_OF_LIGHT_M_S - EXTERR_CLK * t[0];
         }
     else if (t[1] >= 0.0)
         {
@@ -837,13 +817,13 @@ int pephclk(gtime_t time, int sat, const nav_t *nav, double *dts,
                 {
                     return 0;
                 }
-            std = nav->pclk[index + 1].std[sat - 1][0] * SPEED_OF_LIGHT + EXTERR_CLK * t[1];
+            std = nav->pclk[index + 1].std[sat - 1][0] * SPEED_OF_LIGHT_M_S + EXTERR_CLK * t[1];
         }
     else if (c[0] != 0.0 && c[1] != 0.0)
         {
             dts[0] = (c[1] * t[0] - c[0] * t[1]) / (t[0] - t[1]);
             i = t[0] < -t[1] ? 0 : 1;
-            std = nav->pclk[index + i].std[sat - 1][0] * SPEED_OF_LIGHT + EXTERR_CLK * fabs(t[i]);
+            std = nav->pclk[index + i].std[sat - 1][0] * SPEED_OF_LIGHT_M_S + EXTERR_CLK * fabs(t[i]);
         }
     else
         {
@@ -1009,7 +989,7 @@ int peph2pos(gtime_t time, int sat, const nav_t *nav, int opt,
     /* relativistic effect correction */
     if (dtss[0] != 0.0)
         {
-            dts[0] = dtss[0] - 2.0 * dot(rs, rs + 3, 3) / SPEED_OF_LIGHT / SPEED_OF_LIGHT;
+            dts[0] = dtss[0] - 2.0 * dot(rs, rs + 3, 3) / SPEED_OF_LIGHT_M_S / SPEED_OF_LIGHT_M_S;
             dts[1] = (dtst[0] - dtss[0]) / tt;
         }
     else

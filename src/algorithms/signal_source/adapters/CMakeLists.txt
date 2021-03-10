@@ -1,23 +1,13 @@
-# Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
-#
+# GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 # This file is part of GNSS-SDR.
 #
-# GNSS-SDR is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# GNSS-SDR is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
-#
+# SPDX-FileCopyrightText: 2010-2020 C. Fernandez-Prades cfernandez(at)cttc.es
+# SPDX-License-Identifier: BSD-3-Clause
 
 
 # Optional drivers
+set(OPT_DRIVER_SOURCES "")
+set(OPT_DRIVER_HEADERS "")
 
 if(ENABLE_RAW_UDP AND PCAP_FOUND)
     set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} custom_udp_signal_source.cc)
@@ -57,7 +47,7 @@ if(ENABLE_GN3S)
     # GN3S (USB dongle)
     ##############################################
     if(NOT GRGN3S_FOUND)
-        message(" gr-gn3s not found, install it from https://github.com/gnss-sdr/gr-gn3s ")
+        message(" gr-gn3s not found, install it from https://github.com/gnss-sdr/gr-gn3s")
         message(FATAL_ERROR "gr-gn3s required for building gnss-sdr with this option enabled")
     endif()
     set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} gn3s_signal_source.cc)
@@ -76,7 +66,7 @@ if(ENABLE_ARRAY)
     # DBFCTTC GNSS EXPERIMENTAL ARRAY PROTOTYPE
     ##############################################
     if(NOT GRDBFCTTC_FOUND)
-        message(" gr-dbfcttc not found, install it from https://github.com/gnss-sdr/gr-dbfcttc ")
+        message(" gr-dbfcttc not found, install it from https://github.com/gnss-sdr/gr-dbfcttc")
         message(FATAL_ERROR "gr-dbfcttc required for building gnss-sdr with this option enabled")
     endif()
     set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} raw_array_signal_source.cc)
@@ -86,7 +76,7 @@ endif()
 
 if(ENABLE_OSMOSDR)
     ################################################################################
-    # OsmoSDR - http://sdr.osmocom.org/trac/
+    # OsmoSDR - https://osmocom.org/projects/gr-osmosdr/
     ################################################################################
     if(GROSMOSDR_FOUND)
         set(OPT_DRIVER_SOURCES ${OPT_DRIVER_SOURCES} osmosdr_signal_source.cc)
@@ -102,6 +92,8 @@ endif()
 
 
 set(SIGNAL_SOURCE_ADAPTER_SOURCES
+    signal_source_base.cc
+    file_source_base.cc
     file_signal_source.cc
     multichannel_file_signal_source.cc
     gen_signal_source.cc
@@ -116,6 +108,8 @@ set(SIGNAL_SOURCE_ADAPTER_SOURCES
 )
 
 set(SIGNAL_SOURCE_ADAPTER_HEADERS
+    signal_source_base.h
+    file_source_base.h
     file_signal_source.h
     multichannel_file_signal_source.h
     gen_signal_source.h
@@ -132,32 +126,54 @@ set(SIGNAL_SOURCE_ADAPTER_HEADERS
 list(SORT SIGNAL_SOURCE_ADAPTER_HEADERS)
 list(SORT SIGNAL_SOURCE_ADAPTER_SOURCES)
 
-source_group(Headers FILES ${SIGNAL_SOURCE_ADAPTER_HEADERS})
-
-add_library(signal_source_adapters
-    ${SIGNAL_SOURCE_ADAPTER_SOURCES}
-    ${SIGNAL_SOURCE_ADAPTER_HEADERS}
-)
+if(USE_CMAKE_TARGET_SOURCES)
+    add_library(signal_source_adapters STATIC)
+    target_sources(signal_source_adapters
+        PRIVATE
+            ${SIGNAL_SOURCE_ADAPTER_SOURCES}
+        PUBLIC
+            ${SIGNAL_SOURCE_ADAPTER_HEADERS}
+    )
+else()
+    source_group(Headers FILES ${SIGNAL_SOURCE_ADAPTER_HEADERS})
+    add_library(signal_source_adapters
+        ${SIGNAL_SOURCE_ADAPTER_SOURCES}
+        ${SIGNAL_SOURCE_ADAPTER_HEADERS}
+    )
+endif()
 
 target_include_directories(signal_source_adapters
     PUBLIC
         ${CMAKE_SOURCE_DIR}/src/core/interfaces
 )
 
+if(ENABLE_FPGA OR ENABLE_AD9361)
+    target_link_libraries(signal_source_adapters
+        PUBLIC
+            signal_source_libs
+        PRIVATE
+            core_libs
+    )
+endif()
+
 target_link_libraries(signal_source_adapters
     PUBLIC
         Boost::headers
-        Gnuradio::runtime
         Gnuradio::blocks
         signal_source_gr_blocks
-        signal_source_libs
     PRIVATE
+        algorithms_libs
         gnss_sdr_flags
         core_system_parameters
-        Gflags::gflags
         Glog::glog
         Volk::volk
 )
+
+if(GNURADIO_USES_STD_POINTERS)
+    target_compile_definitions(signal_source_adapters
+        PUBLIC -DGNURADIO_USES_STD_POINTERS=1
+    )
+endif()
 
 if(ENABLE_RAW_UDP AND PCAP_FOUND)
     target_link_libraries(signal_source_adapters
@@ -170,8 +186,7 @@ if(ENABLE_UHD)
     target_link_libraries(signal_source_adapters
         PUBLIC
             Gnuradio::uhd
-        PRIVATE
-            Uhd::uhd
+            Uhd::uhd  # for uhd/config.hpp in gnuradio/uhd/usrp_source.h
     )
 endif()
 
@@ -187,6 +202,16 @@ if(ENABLE_AD9361 AND LIBIIO_FOUND)
         PRIVATE
             Iio::iio
     )
+endif()
+
+if(ENABLE_AD9361 OR ENABLE_FMCOMMS2 OR ENABLE_PLUTOSDR)
+    if(LIBAD9361_VERSION)
+        if(LIBAD9361_VERSION VERSION_GREATER 0.1)
+            target_compile_definitions(signal_source_adapters
+                PRIVATE -DLIBAD9361_VERSION_GREATER_THAN_01=1
+            )
+        endif()
+    endif()
 endif()
 
 if(ENABLE_FLEXIBAND AND TELEORBIT_FOUND)
@@ -210,11 +235,28 @@ if(ENABLE_ARRAY AND GRDBFCTTC_FOUND)
     )
 endif()
 
-
 if(ENABLE_PLUTOSDR OR ENABLE_FMCOMMS2)
     if(GR_IIO_INCLUDE_HAS_GNURADIO)
         target_compile_definitions(signal_source_adapters
             PUBLIC -DGRIIO_INCLUDE_HAS_GNURADIO=1
+        )
+    endif()
+    if(GNURADIO_API_IIO)
+        target_compile_definitions(signal_source_adapters
+            PUBLIC -DGNURADIO_API_IIO=1
+        )
+    endif()
+    target_link_libraries(signal_source_adapters
+        PUBLIC
+            Gnuradio::iio
+            Boost::chrono
+        PRIVATE
+            Iio::iio
+    )
+    if(NOT GNURADIO_API_IIO)
+        target_link_libraries(signal_source_adapters
+            PRIVATE
+                Gnuradio::analog
         )
     endif()
 endif()

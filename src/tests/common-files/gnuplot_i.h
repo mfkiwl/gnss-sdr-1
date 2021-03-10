@@ -18,34 +18,21 @@
  *     by M. Burgis (10/03/08)
  *  4. Some fixes and improvements for Linux and macOS
  *     by C. Fernandez (22/10/17)
- * -------------------------------------------------------------------------
  *
- * Copyright (C) 2013-2019  (see AUTHORS file for a list of contributors)
+ * -----------------------------------------------------------------------------
  *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
- *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 
-#ifndef GNSS_SDR_GNUPLOT_I_H_
-#define GNSS_SDR_GNUPLOT_I_H_
+#ifndef GNSS_SDR_GNUPLOT_I_H
+#define GNSS_SDR_GNUPLOT_I_H
 
 #include <gflags/gflags.h>
 #include <cmath>
@@ -64,10 +51,12 @@ DEFINE_bool(show_plots, true, "Show plots on screen. Disable for non-interactive
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__TOS_WIN__)
 // defined for 32 and 64-bit environments
+// clang-format off
 #include <io.h>              // for _access(), _mktemp()
 #define GP_MAX_TMP_FILES 27  // 27 temporary files it's Microsoft restriction
+// clang-format on
 #elif defined(unix) || defined(__unix) || defined(__unix__) || defined(__APPLE__)
-// all UNIX-like OSs (Linux, *BSD, MacOSX, Solaris, ...)
+// all UNIX-like OSs (Linux, *BSD, macOS, Solaris, ...)
 #include <unistd.h>  // for access(), mkstemp()
 #define GP_MAX_TMP_FILES 1024
 #else
@@ -805,7 +794,7 @@ Gnuplot &Gnuplot::plot_x(const X &x, const std::string &title)
     //
     for (unsigned int i = 0; i < x.size(); i++)
         {
-            tmp << x[i] << std::endl;
+            tmp << x[i] << '\n';
         }
 
     tmp.flush();
@@ -848,7 +837,7 @@ Gnuplot &Gnuplot::plot_xy(const X &x, const Y &y, const std::string &title, cons
     //
     for (unsigned int i = 0; i < x.size(); i++)
         {
-            tmp << x[i] << " " << y[i] << std::endl;
+            tmp << x[i] << " " << y[i] << '\n';
         }
 
     tmp.flush();
@@ -894,7 +883,7 @@ Gnuplot &Gnuplot::plot_xy_err(const X &x,
     //
     for (unsigned int i = 0; i < x.size(); i++)
         {
-            tmp << x[i] << " " << y[i] << " " << dy[i] << std::endl;
+            tmp << x[i] << " " << y[i] << " " << dy[i] << '\n';
         }
 
     tmp.flush();
@@ -936,7 +925,7 @@ Gnuplot &Gnuplot::plot_grid3d(const X &x,
         {
             for (unsigned int k = 0; k < y.size(); k++)
                 {
-                    tmp << static_cast<float>(x.at(i)) << " " << static_cast<float>(y.at(k)) << " " << mag.at(i).at(k) << std::endl;
+                    tmp << static_cast<float>(x.at(i)) << " " << static_cast<float>(y.at(k)) << " " << mag.at(i).at(k) << '\n';
                 }
             tmp.flush();
         }
@@ -1004,7 +993,7 @@ Gnuplot &Gnuplot::plot_xyz(const X &x,
     //
     for (unsigned int i = 0; i < x.size(); i++)
         {
-            tmp << x[i] << " " << y[i] << " " << z[i] << std::endl;
+            tmp << x[i] << " " << y[i] << " " << z[i] << '\n';
         }
 
     tmp.flush();
@@ -1061,8 +1050,7 @@ inline void Gnuplot::set_terminal_std(const std::string &type)
 
 // ----------------------------------------------------------------------------
 //
-// A string tokenizer taken from http://www.sunsite.ualberta.ca/Documentation/
-// /Gnu/libstdc++-2.90.8/html/21_strings/stringtok_std_h.txt
+// A string tokenizer taken
 //
 template <typename Container>
 void stringtok(Container &container,
@@ -1118,7 +1106,7 @@ Gnuplot::~Gnuplot()
         {
 #endif
             // throw GnuplotException("Problem closing communication to gnuplot");
-            std::cout << "Gnuplot window left open." << std::endl;
+            std::cout << "Gnuplot window left open.\n";
         }
 }
 
@@ -1874,7 +1862,7 @@ inline Gnuplot &Gnuplot::plot_image(const unsigned char *ucPicBuf,
             for (unsigned int iColumn = 0; iColumn < iWidth; iColumn++)
                 {
                     tmp << iColumn << " " << iRow << " "
-                        << static_cast<float>(ucPicBuf[iIndex++]) << std::endl;
+                        << static_cast<float>(ucPicBuf[iIndex++]) << '\n';
                 }
         }
 
@@ -2200,7 +2188,7 @@ inline std::string Gnuplot::create_tmpfile(std::ofstream &tmp)
         {
             std::ostringstream except;
             except << "Maximum number of temporary files reached ("
-                   << GP_MAX_TMP_FILES << "): cannot open more files" << std::endl;
+                   << GP_MAX_TMP_FILES << "): cannot open more files\n";
 
             throw GnuplotException(except.str());
         }
@@ -2262,7 +2250,7 @@ inline void Gnuplot::remove_tmpfiles()
                 {
                     if (remove(i.c_str()) != 0)
                         {
-                            std::cout << "Problem closing files" << std::endl;
+                            std::cout << "Problem closing files\n";
                         }
                 }
 

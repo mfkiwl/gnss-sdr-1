@@ -3,34 +3,21 @@
  * \brief Universal Hardware Driver signal source
  * \author Javier Arribas, 2012. jarribas(at)cttc.es
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
- *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "uhd_signal_source.h"
 #include "GPS_L1_CA.h"
 #include "configuration_interface.h"
+#include "gnss_sdr_string_literals.h"
 #include "gnss_sdr_valve.h"
 #include <glog/logging.h>
 #include <uhd/exception.hpp>
@@ -39,15 +26,18 @@
 #include <iostream>
 #include <utility>
 
+using namespace std::string_literals;
 
-UhdSignalSource::UhdSignalSource(ConfigurationInterface* configuration,
+
+UhdSignalSource::UhdSignalSource(const ConfigurationInterface* configuration,
     const std::string& role, unsigned int in_stream, unsigned int out_stream,
-    std::shared_ptr<Concurrent_Queue<pmt::pmt_t>> queue) : role_(role), in_stream_(in_stream), out_stream_(out_stream), queue_(std::move(queue))
+    Concurrent_Queue<pmt::pmt_t>* queue)
+    : SignalSourceBase(configuration, role, "UHD_Signal_Source"s), in_stream_(in_stream), out_stream_(out_stream)
 {
     // DUMP PARAMETERS
-    std::string empty = "";
-    std::string default_dump_file = "./data/signal_source.dat";
-    std::string default_item_type = "cshort";
+    const std::string empty;
+    const std::string default_dump_file("./data/signal_source.dat");
+    const std::string default_item_type("cshort");
 
     // UHD COMMON PARAMETERS
     uhd::device_addr_t dev_addr;
@@ -160,30 +150,30 @@ UhdSignalSource::UhdSignalSource(ConfigurationInterface* configuration,
     // 2.2 set the sample rate for the usrp device
     uhd_source_->set_samp_rate(sample_rate_);
     // the actual sample rate may differ from the rate set
-    std::cout << boost::format("Sampling Rate for the USRP device: %f [sps]...") % (uhd_source_->get_samp_rate()) << std::endl;
-    LOG(INFO) << boost::format("Sampling Rate for the USRP device: %f [sps]...") % (uhd_source_->get_samp_rate());
+    std::cout << "Sampling Rate for the USRP device: " << uhd_source_->get_samp_rate() << " [sps]...\n";
+    LOG(INFO) << "Sampling Rate for the USRP device: " << uhd_source_->get_samp_rate() << " [sps]...";
 
     std::vector<std::string> sensor_names;
 
     for (int i = 0; i < RF_channels_; i++)
         {
-            std::cout << "UHD RF CHANNEL #" << i << " SETTINGS" << std::endl;
+            std::cout << "UHD RF CHANNEL #" << i << " SETTINGS\n";
             // 3. Tune the usrp device to the desired center frequency
             uhd_source_->set_center_freq(freq_.at(i), i);
-            std::cout << boost::format("Actual USRP center freq.: %f [Hz]...") % (uhd_source_->get_center_freq(i)) << std::endl;
-            LOG(INFO) << boost::format("Actual USRP center freq. set to: %f [Hz]...") % (uhd_source_->get_center_freq(i));
+            std::cout << "Actual USRP center freq.: " << uhd_source_->get_center_freq(i) << " [Hz]...\n";
+            LOG(INFO) << "Actual USRP center freq. set to: " << uhd_source_->get_center_freq(i) << " [Hz]...";
 
             // TODO: Assign the remnant IF from the PLL tune error
-            std::cout << boost::format("PLL Frequency tune error %f [Hz]...") % (uhd_source_->get_center_freq(i) - freq_.at(i)) << std::endl;
-            LOG(INFO) << boost::format("PLL Frequency tune error %f [Hz]...") % (uhd_source_->get_center_freq(i) - freq_.at(i));
+            std::cout << "PLL Frequency tune error: " << uhd_source_->get_center_freq(i) - freq_.at(i) << " [Hz]...\n";
+            LOG(INFO) << "PLL Frequency tune error: " << uhd_source_->get_center_freq(i) - freq_.at(i) << " [Hz]...";
 
             // 4. set the gain for the daughterboard
             uhd_source_->set_gain(gain_.at(i), i);
-            std::cout << boost::format("Actual daughterboard gain set to: %f dB...") % uhd_source_->get_gain(i) << std::endl;
-            LOG(INFO) << boost::format("Actual daughterboard gain set to: %f dB...") % uhd_source_->get_gain(i);
+            std::cout << "Actual daughterboard gain set to: " << uhd_source_->get_gain(i) << " dB...\n";
+            LOG(INFO) << "Actual daughterboard gain set to: " << uhd_source_->get_gain(i) << " dB...";
 
             // 5.  Set the bandpass filter on the RF frontend
-            std::cout << boost::format("Setting RF bandpass filter bandwidth to: %f [Hz]...") % IF_bandwidth_hz_.at(i) << std::endl;
+            std::cout << "Setting RF bandpass filter bandwidth to: " << IF_bandwidth_hz_.at(i) << " [Hz]...\n";
             uhd_source_->set_bandwidth(IF_bandwidth_hz_.at(i), i);
 
             // set the antenna (optional)
@@ -197,14 +187,14 @@ UhdSignalSource::UhdSignalSource(ConfigurationInterface* configuration,
             if (std::find(sensor_names.begin(), sensor_names.end(), "lo_locked") != sensor_names.end())
                 {
                     uhd::sensor_value_t lo_locked = uhd_source_->get_sensor("lo_locked", i);
-                    std::cout << boost::format("Check for front-end %s ...") % lo_locked.to_pp_string() << " is ";
+                    std::cout << "Check for front-end " << lo_locked.to_pp_string() << " is ... ";
                     if (lo_locked.to_bool() == true)
                         {
-                            std::cout << "Locked" << std::endl;
+                            std::cout << "Locked\n";
                         }
                     else
                         {
-                            std::cout << "UNLOCKED!" << std::endl;
+                            std::cout << "UNLOCKED!\n";
                         }
                     // UHD_ASSERT_THROW(lo_locked.to_bool());
                 }
@@ -215,7 +205,7 @@ UhdSignalSource::UhdSignalSource(ConfigurationInterface* configuration,
             if (samples_.at(i) != 0ULL)
                 {
                     LOG(INFO) << "RF_channel " << i << " Send STOP signal after " << samples_.at(i) << " samples";
-                    valve_.emplace_back(gnss_sdr_make_valve(item_size_, samples_.at(i), queue_));
+                    valve_.emplace_back(gnss_sdr_make_valve(item_size_, samples_.at(i), queue));
                     DLOG(INFO) << "valve(" << valve_.at(i)->unique_id() << ")";
                 }
 
@@ -265,6 +255,7 @@ void UhdSignalSource::connect(gr::top_block_sptr top_block)
 
 void UhdSignalSource::disconnect(gr::top_block_sptr top_block)
 {
+    uhd_source_->stop();
     for (int i = 0; i < RF_channels_; i++)
         {
             if (samples_.at(i) != 0ULL)

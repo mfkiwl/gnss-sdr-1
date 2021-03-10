@@ -1,12 +1,18 @@
-/*
-** SUPL library with some RRLP
-**
-** Copyright (c) 2007 Tatu Mannisto <tatu a-t tajuma d-o-t com>
-** All rights reserved.
-** Redistribution and modifications are permitted subject to BSD license.
-** Modifified by Carles Fernandez <carles d-o-t fernandez a-t cttc d-o-t es>
-** to make use of the gnutls library.
-*/
+/*!
+ * \file supl.c
+ * \brief SUPL library with some RRLP
+ * \author Carles Fernandez, 2017 cfernandez(at)cttc.es
+ *
+ * -----------------------------------------------------------------------------
+ *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
+ * This file is part of GNSS-SDR.
+ *
+ * Copyright (c) 2007 Tatu Mannisto <tatu a-t tajuma d-o-t com>
+ * SPDX-License-Identifier: BSD-1-Clause
+ *
+ * -----------------------------------------------------------------------------
+ */
 
 #include "supl.h"
 #include <errno.h>
@@ -77,7 +83,7 @@ int EXPORT supl_ulp_encode(supl_ulp_t *pdu)
             memset(pdu->buffer, 0, sizeof(pdu->buffer));
 
             pdu_len = (ret.encoded + 7) >> 3;
-            ((ULP_PDU_t *)pdu->pdu)->length = pdu_len;
+            (pdu->pdu)->length = pdu_len;
 
             ret = uper_encode_to_buffer(&asn_DEF_ULP_PDU, pdu->pdu, pdu->buffer, sizeof(pdu->buffer));
             if (ret.encoded > 0)
@@ -800,20 +806,20 @@ int EXPORT supl_collect_rrlp(supl_assist_t *assist, PDU_t *rrlp, struct timeval 
                     if (ue)
                         {
 #if 0
-	assist->eph_x[i].L2P = ue->ephemL2Pflag;
-	assist->eph_x[i].fit = ue->ephemFitFlag;
+    assist->eph_x[i].L2P = ue->ephemL2Pflag;
+    assist->eph_x[i].fit = ue->ephemFitFlag;
 #endif
                             assist->eph[i].delta_n = ue->ephemDeltaN;
                             assist->eph[i].M0 = ue->ephemM0;
 #if 0
-	// this is needed for asn1c version 0.9.22
-	{
-	  long v;
-	  asn_INTEGER2long((INTEGER_t *)&ue->ephemE, &v);
-	  assist->eph[i].e = v;
-	  asn_INTEGER2long((INTEGER_t *)&ue->ephemAPowerHalf, &v);
-	  assist->eph[i].e = v;
-	}
+    // this is needed for asn1c version 0.9.22
+    {
+      long v;
+      asn_INTEGER2long((INTEGER_t *)&ue->ephemE, &v);
+      assist->eph[i].e = v;
+      asn_INTEGER2long((INTEGER_t *)&ue->ephemAPowerHalf, &v);
+      assist->eph[i].e = v;
+    }
 #else
                             assist->eph[i].e = ue->ephemE;
                             assist->eph[i].A_sqrt = ue->ephemAPowerHalf;

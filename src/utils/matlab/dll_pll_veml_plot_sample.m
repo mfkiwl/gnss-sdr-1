@@ -1,28 +1,15 @@
 % Reads GNSS-SDR Tracking dump binary file using the provided
 %  function and plots some internal variables
+
 % Javier Arribas, 2011. jarribas(at)cttc.es
 % Antonio Ramos,  2018. antonio.ramos(at)cttc.es
 % -------------------------------------------------------------------------
 %
-% Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
-%
-% GNSS-SDR is a software defined Global Navigation
-%           Satellite Systems receiver
-%
+% GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
 % This file is part of GNSS-SDR.
 %
-% GNSS-SDR is free software: you can redistribute it and/or modify
-% it under the terms of the GNU General Public License as published by
-% the Free Software Foundation, either version 3 of the License, or
-% at your option) any later version.
-% 
-% GNSS-SDR is distributed in the hope that it will be useful,
-% but WITHOUT ANY WARRANTY; without even the implied warranty of
-% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-% GNU General Public License for more details.
-%
-% You should have received a copy of the GNU General Public License
-% along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
+% Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
+% SPDX-License-Identifier: GPL-3.0-or-later
 %
 % -------------------------------------------------------------------------
 %
@@ -52,7 +39,7 @@ end
 for N=1:1:channels
     trackResults(N).status = 'T'; %fake track
     if plot_last_outputs>0 && plot_last_outputs<length(GNSS_tracking(N).code_freq_hz)
-        
+
         start_sample=length(GNSS_tracking(N).code_freq_hz)-plot_last_outputs;
     else
         start_sample=1;
@@ -91,4 +78,3 @@ end
 %     plot(trackResults(N).prn_start_time_s , GNSS_tracking(N).carrier_doppler_hz(start_sample:end).' / 1000);
 %     xlabel('Time(s)'); ylabel('Doppler(KHz)'); title(['Doppler frequency channel ' num2str(N)]);
 % end
-

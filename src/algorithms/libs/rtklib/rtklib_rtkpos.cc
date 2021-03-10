@@ -19,37 +19,15 @@
  * Neither the executive binaries nor the shared libraries are required by, used
  * or included in GNSS-SDR.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  * Copyright (C) 2007-2013, T. Takasu
  * Copyright (C) 2017, Javier Arribas
  * Copyright (C) 2017, Carles Fernandez
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- *
- *----------------------------------------------------------------------------*/
+ * SPDX-License-Identifier: BSD-2-Clause
+ * -----------------------------------------------------------------------------
+ */
 
 #include "rtklib_rtkpos.h"
 #include "rtklib_ephemeris.h"
@@ -568,7 +546,7 @@ double varerr(int sat __attribute((unused)), int sys, double el, double bl, doub
     double a;
     double b;
     double c = opt->err[3] * bl / 1e4;
-    double d = SPEED_OF_LIGHT * opt->sclkstab * dt;
+    double d = SPEED_OF_LIGHT_M_S * opt->sclkstab * dt;
     double fact = 1.0;
     double sinel = sin(el);
     int i = sys == SYS_GLO ? 1 : (sys == SYS_GAL ? 2 : 0);
@@ -1023,35 +1001,35 @@ void detslp_gf_L1L5(rtk_t *rtk, const obsd_t *obs, int i, int j,
 void detslp_dop(rtk_t *rtk __attribute__((unused)), const obsd_t *obs __attribute__((unused)), int i __attribute__((unused)), int rcv __attribute__((unused)),
     const nav_t *nav __attribute__((unused)))
 {
-/* detection with doppler disabled because of clock-jump issue (v.2.3.0) */
+    /* detection with doppler disabled because of clock-jump issue (v.2.3.0) */
 #if 0
-    int f,sat = obs[i].sat;
-    double tt,dph,dpt,lam,thres;
+    int f, sat = obs[i].sat;
+    double tt, dph, dpt, lam, thres;
 
-    trace(3,"detslp_dop: i=%d rcv=%d\n",i,rcv);
+    trace(3, "detslp_dop: i=%d rcv=%d\n", i, rcv);
 
-    for (f = 0;f<rtk->opt.nf;f++)
+    for (f = 0; f < rtk->opt.nf; f++)
         {
-            if (obs[i].L[f] == 0.0 || obs[i].D[f] == 0.0 || rtk->ph[rcv-1][sat-1][f] == 0.0)
+            if (obs[i].L[f] == 0.0 || obs[i].D[f] == 0.0 || rtk->ph[rcv - 1][sat - 1][f] == 0.0)
                 {
                     continue;
                 }
-            if (fabs(tt = timediff(obs[i].time,rtk->pt[rcv-1][sat-1][f]))<DTTOL) continue;
-            if ((lam = nav->lam[sat-1][f])<=0.0) continue;
+            if (fabs(tt = timediff(obs[i].time, rtk->pt[rcv - 1][sat - 1][f])) < DTTOL) continue;
+            if ((lam = nav->lam[sat - 1][f]) <= 0.0) continue;
 
             /* cycle slip threshold (cycle) */
-            thres = MAXACC*tt*tt/2.0/lam+rtk->opt.err[4]*fabs(tt)*4.0;
+            thres = MAXACC * tt * tt / 2.0 / lam + rtk->opt.err[4] * fabs(tt) * 4.0;
 
             /* phase difference and doppler x time (cycle) */
-            dph = obs[i].L[f]-rtk->ph[rcv-1][sat-1][f];
-            dpt = -obs[i].D[f]*tt;
+            dph = obs[i].L[f] - rtk->ph[rcv - 1][sat - 1][f];
+            dpt = -obs[i].D[f] * tt;
 
-            if (fabs(dph-dpt)<=thres) continue;
+            if (fabs(dph - dpt) <= thres) continue;
 
-            rtk->slip[sat-1][f]| = 1;
+            rtk->slip[sat - 1][f] | = 1;
 
-            errmsg(rtk,"slip detected (sat=%2d rcv=%d L%d=%.3f %.3f thres=%.3f)\n",
-                    sat,rcv,f+1,dph,dpt,thres);
+            errmsg(rtk, "slip detected (sat=%2d rcv=%d L%d=%.3f %.3f thres=%.3f)\n",
+                sat, rcv, f + 1, dph, dpt, thres);
         }
 #endif
 }
@@ -1276,8 +1254,8 @@ void zdres_sat(int base, double r, const obsd_t *obs, const nav_t *nav,
                     return;
                 }
 
-            f1 = SPEED_OF_LIGHT / lam[0];
-            f2 = SPEED_OF_LIGHT / lam[1];
+            f1 = SPEED_OF_LIGHT_M_S / lam[0];
+            f2 = SPEED_OF_LIGHT_M_S / lam[1];
             C1 = std::pow(f1, 2.0) / (std::pow(f1, 2.0) - std::pow(f2, 2.0));
             C2 = -std::pow(f2, 2.0) / (std::pow(f1, 2.0) - std::pow(f2, 2.0));
             dant_if = C1 * dant[0] + C2 * dant[1];
@@ -1383,7 +1361,7 @@ int zdres(int base, const obsd_t *obs, int n, const double *rs,
                 }
 
             /* satellite clock-bias */
-            r += -SPEED_OF_LIGHT * dts[i * 2];
+            r += -SPEED_OF_LIGHT_M_S * dts[i * 2];
 
             /* troposphere delay model (hydrostatic) */
             zhd = tropmodel(obs[0].time, pos, zazel, 0.0);
@@ -1554,7 +1532,7 @@ double gloicbcorr(int sat1 __attribute((unused)), int sat2 __attribute((unused))
             return 0.0;
         }
 
-    dfreq = (SPEED_OF_LIGHT / lam1 - SPEED_OF_LIGHT / lam2) / (f == 0 ? DFRQ1_GLO : DFRQ2_GLO);
+    dfreq = (SPEED_OF_LIGHT_M_S / lam1 - SPEED_OF_LIGHT_M_S / lam2) / (f == 0 ? DFRQ1_GLO : DFRQ2_GLO);
 
     return opt->exterr.gloicb[f] * 0.01 * dfreq; /* (m) */
 }
@@ -1779,7 +1757,7 @@ int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
                             /* glonass receiver h/w bias term */
                             if (rtk->opt.glomodear == 2 && sysi == SYS_GLO && sysj == SYS_GLO && ff < NFREQGLO)
                                 {
-                                    df = (SPEED_OF_LIGHT / lami - SPEED_OF_LIGHT / lamj) / 1E6; /* freq-difference (MHz) */
+                                    df = (SPEED_OF_LIGHT_M_S / lami - SPEED_OF_LIGHT_M_S / lamj) / 1E6; /* freq-difference (MHz) */
                                     v[nv] -= df * x[IL_RTK(ff, opt)];
                                     if (H)
                                         {
@@ -1835,26 +1813,26 @@ int ddres(rtk_t *rtk, const nav_t *nav, double dt, const double *x,
                             nb[b]++;
                         }
 #if 0 /* residuals referenced to reference satellite (2.4.2 p11) */
-                /* restore single-differenced residuals assuming sum equal zero */
-                if (f<nf)
-                    {
-                        for (j=0,s=0.0;j<MAXSAT;j++) s+=rtk->ssat[j].resc[f];
-                        s/=nb[b]+1;
-                        for (j=0;j<MAXSAT;j++)
-                            {
-                                if (j == sat[i]-1||rtk->ssat[j].resc[f]!=0.0) rtk->ssat[j].resc[f]-=s;
-                            }
-                    }
-                else
-                    {
-                        for (j=0,s=0.0;j<MAXSAT;j++) s+=rtk->ssat[j].resp[f-nf];
-                        s/=nb[b]+1;
-                        for (j=0;j<MAXSAT;j++)
-                            {
-                                if (j == sat[i]-1||rtk->ssat[j].resp[f-nf]!=0.0)
-                                    rtk->ssat[j].resp[f-nf]-=s;
-                            }
-                    }
+                    /* restore single-differenced residuals assuming sum equal zero */
+                    if (f < nf)
+                        {
+                            for (j = 0, s = 0.0; j < MAXSAT; j++) s += rtk->ssat[j].resc[f];
+                            s /= nb[b] + 1;
+                            for (j = 0; j < MAXSAT; j++)
+                                {
+                                    if (j == sat[i] - 1 || rtk->ssat[j].resc[f] != 0.0) rtk->ssat[j].resc[f] -= s;
+                                }
+                        }
+                    else
+                        {
+                            for (j = 0, s = 0.0; j < MAXSAT; j++) s += rtk->ssat[j].resp[f - nf];
+                            s /= nb[b] + 1;
+                            for (j = 0; j < MAXSAT; j++)
+                                {
+                                    if (j == sat[i] - 1 || rtk->ssat[j].resp[f - nf] != 0.0)
+                                        rtk->ssat[j].resp[f - nf] -= s;
+                                }
+                        }
 #endif
                     b++;
                 }
@@ -2344,21 +2322,21 @@ int valpos(rtk_t *rtk, const double *v, const double *R, const int *vflg,
                 sat1, sat2, stype, freq + 1, v[i], std::sqrt(R[i + i * nv]));
         }
 #if 0 /* omitted v.2.4.0 */
-    if (stat&&nv>NP(opt))
+    if (stat && nv > NP(opt))
         {
             /* chi-square validation */
-            for (i = 0; i<nv; i++) vv += v[i]*v[i]/R[i+i*nv];
+            for (i = 0; i < nv; i++) vv += v[i] * v[i] / R[i + i * nv];
 
-            if (vv > chisqr[nv-NP(opt)-1])
+            if (vv > chisqr[nv - NP(opt) - 1])
                 {
-                    errmsg(rtk,"residuals validation failed (nv=%d np=%d vv=%.2f cs=%.2f)\n",
-                            nv, NP(opt), vv, chisqr[nv-NP(opt)-1]);
+                    errmsg(rtk, "residuals validation failed (nv=%d np=%d vv=%.2f cs=%.2f)\n",
+                        nv, NP(opt), vv, chisqr[nv - NP(opt) - 1]);
                     stat = 0;
                 }
             else
                 {
-                    trace(3,"valpos : validation ok (%s nv=%d np=%d vv=%.2f cs=%.2f)\n",
-                            rtk->tstr, nv, NP(opt), vv, chisqr[nv-NP(opt)-1]);
+                    trace(3, "valpos : validation ok (%s nv=%d np=%d vv=%.2f cs=%.2f)\n",
+                        rtk->tstr, nv, NP(opt), vv, chisqr[nv - NP(opt) - 1]);
                 }
         }
 #endif
@@ -2811,11 +2789,9 @@ int rtkpos(rtk_t *rtk, const obsd_t *obs, int n, const nav_t *nav)
     /* count rover/base station observations */
     for (nu = 0; nu < n && obs[nu].rcv == 1; nu++)
         {
-            ;
         }
     for (nr = 0; nu + nr < n && obs[nu + nr].rcv == 2; nr++)
         {
-            ;
         }
 
     time = rtk->sol.time; /* previous epoch */

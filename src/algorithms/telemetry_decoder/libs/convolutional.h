@@ -4,20 +4,14 @@
  * \author Matthew C. Valenti, 2006-2008.
  * \author C. Fernandez-Prades, 2019.
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
+ *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
+ * This file is part of GNSS-SDR.
  *
  * Copyright (C) 2006-2008  Matthew C. Valenti
  * Copyright (C) 2019 C. Fernandez-Prades
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
- * This file is part of GNSS-SDR.
- *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
  * This file is a derived work of the original file, which had this note:
  *
@@ -38,11 +32,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef GNSS_SDR_CONVOLUTIONAL_H_
-#define GNSS_SDR_CONVOLUTIONAL_H_
+#ifndef GNSS_SDR_CONVOLUTIONAL_H
+#define GNSS_SDR_CONVOLUTIONAL_H
 
 #include <volk_gnsssdr/volk_gnsssdr.h>
 #include <vector>
+
+/** \addtogroup Telemetry_Decoder
+ * \{ */
+/** \addtogroup Telemetry_Decoder_libs
+ * Utilities for the decoding of GNSS navigation messages.
+ * \{ */
+
 
 /* define constants used throughout the library */
 const float MAXLOG = 1e7; /* Define infinity */
@@ -272,4 +273,6 @@ inline void Viterbi(int output_u_int[],
 }
 
 
-#endif
+/** \} */
+/** \} */
+#endif  // GNSS_SDR_CONVOLUTIONAL_H

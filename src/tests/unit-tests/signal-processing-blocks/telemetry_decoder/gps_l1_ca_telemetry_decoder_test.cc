@@ -5,29 +5,15 @@
  * \author Javier Arribas, 2015. jarribas(at)cttc.es
  *
  *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2012-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Copyright (C) 2012-2020  (see AUTHORS file for a list of contributors)
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
- *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include <armadillo>
@@ -45,7 +31,6 @@
 #include <gnuradio/analog/sig_source_c.h>
 #endif
 #include "GPS_L1_CA.h"
-#include "gnss_block_factory.h"
 #include "gnss_block_interface.h"
 #include "gnss_synchro.h"
 #include "gps_l1_ca_dll_pll_tracking.h"
@@ -61,12 +46,16 @@
 #include <gnuradio/blocks/null_sink.h>
 #include <gnuradio/blocks/skiphead.h>
 #include <gtest/gtest.h>
+#if HAS_GENERIC_LAMBDA
+#else
+#include <boost/bind/bind.hpp>
+#endif
 
 
 // ######## GNURADIO BLOCK MESSAGE RECEVER FOR TRACKING MESSAGES #########
 class GpsL1CADllPllTelemetryDecoderTest_msg_rx;
 
-using GpsL1CADllPllTelemetryDecoderTest_msg_rx_sptr = boost::shared_ptr<GpsL1CADllPllTelemetryDecoderTest_msg_rx>;
+using GpsL1CADllPllTelemetryDecoderTest_msg_rx_sptr = gnss_shared_ptr<GpsL1CADllPllTelemetryDecoderTest_msg_rx>;
 
 GpsL1CADllPllTelemetryDecoderTest_msg_rx_sptr GpsL1CADllPllTelemetryDecoderTest_msg_rx_make();
 
@@ -74,7 +63,7 @@ class GpsL1CADllPllTelemetryDecoderTest_msg_rx : public gr::block
 {
 private:
     friend GpsL1CADllPllTelemetryDecoderTest_msg_rx_sptr GpsL1CADllPllTelemetryDecoderTest_msg_rx_make();
-    void msg_handler_events(pmt::pmt_t msg);
+    void msg_handler_channel_events(const pmt::pmt_t msg);
     GpsL1CADllPllTelemetryDecoderTest_msg_rx();
 
 public:
@@ -87,16 +76,16 @@ GpsL1CADllPllTelemetryDecoderTest_msg_rx_sptr GpsL1CADllPllTelemetryDecoderTest_
     return GpsL1CADllPllTelemetryDecoderTest_msg_rx_sptr(new GpsL1CADllPllTelemetryDecoderTest_msg_rx());
 }
 
-void GpsL1CADllPllTelemetryDecoderTest_msg_rx::msg_handler_events(pmt::pmt_t msg)
+void GpsL1CADllPllTelemetryDecoderTest_msg_rx::msg_handler_channel_events(const pmt::pmt_t msg)
 {
     try
         {
             int64_t message = pmt::to_long(std::move(msg));
             rx_message = message;
         }
-    catch (boost::bad_any_cast& e)
+    catch (const boost::bad_any_cast& e)
         {
-            LOG(WARNING) << "msg_handler_telemetry Bad any cast!";
+            LOG(WARNING) << "msg_handler_channel_events Bad any_cast: " << e.what();
             rx_message = 0;
         }
 }
@@ -104,7 +93,16 @@ void GpsL1CADllPllTelemetryDecoderTest_msg_rx::msg_handler_events(pmt::pmt_t msg
 GpsL1CADllPllTelemetryDecoderTest_msg_rx::GpsL1CADllPllTelemetryDecoderTest_msg_rx() : gr::block("GpsL1CADllPllTelemetryDecoderTest_msg_rx", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0))
 {
     this->message_port_register_in(pmt::mp("events"));
-    this->set_msg_handler(pmt::mp("events"), boost::bind(&GpsL1CADllPllTelemetryDecoderTest_msg_rx::msg_handler_events, this, _1));
+    this->set_msg_handler(pmt::mp("events"),
+#if HAS_GENERIC_LAMBDA
+        [this](auto&& PH1) { msg_handler_channel_events(PH1); });
+#else
+#if USE_BOOST_BIND_PLACEHOLDERS
+        boost::bind(&GpsL1CADllPllTelemetryDecoderTest_msg_rx::msg_handler_channel_events, this, boost::placeholders::_1));
+#else
+        boost::bind(&GpsL1CADllPllTelemetryDecoderTest_msg_rx::msg_handler_channel_events, this, _1));
+#endif
+#endif
     rx_message = 0;
 }
 
@@ -117,7 +115,7 @@ GpsL1CADllPllTelemetryDecoderTest_msg_rx::~GpsL1CADllPllTelemetryDecoderTest_msg
 // ######## GNURADIO BLOCK MESSAGE RECEVER FOR TLM MESSAGES #########
 class GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx;
 
-using GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_sptr = boost::shared_ptr<GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx>;
+using GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_sptr = std::shared_ptr<GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx>;
 
 GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_sptr GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_make();
 
@@ -125,7 +123,7 @@ class GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx : public gr::block
 {
 private:
     friend GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_sptr GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_make();
-    void msg_handler_events(pmt::pmt_t msg);
+    void msg_handler_channel_events(const pmt::pmt_t msg);
     GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx();
 
 public:
@@ -138,16 +136,16 @@ GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_sptr GpsL1CADllPllTelemetryDecoderT
     return GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_sptr(new GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx());
 }
 
-void GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx::msg_handler_events(pmt::pmt_t msg)
+void GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx::msg_handler_channel_events(const pmt::pmt_t msg)
 {
     try
         {
             int64_t message = pmt::to_long(std::move(msg));
             rx_message = message;
         }
-    catch (boost::bad_any_cast& e)
+    catch (const boost::bad_any_cast& e)
         {
-            LOG(WARNING) << "msg_handler_telemetry Bad any cast!";
+            LOG(WARNING) << "msg_handler_channel_events Bad any_cast: " << e.what();
             rx_message = 0;
         }
 }
@@ -155,7 +153,12 @@ void GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx::msg_handler_events(pmt::pmt_t
 GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx::GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx() : gr::block("GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx", gr::io_signature::make(0, 0, 0), gr::io_signature::make(0, 0, 0))
 {
     this->message_port_register_in(pmt::mp("events"));
-    this->set_msg_handler(pmt::mp("events"), boost::bind(&GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx::msg_handler_events, this, _1));
+    this->set_msg_handler(pmt::mp("events"),
+#if HAS_GENERIC_LAMBDA
+        [this](auto&& PH1) { msg_handler_channel_events(PH1); });
+#else
+        boost::bind(&GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx::msg_handler_channel_events, this, boost::placeholders::_1));
+#endif
     rx_message = 0;
 }
 
@@ -189,7 +192,6 @@ public:
 
     GpsL1CATelemetryDecoderTest()
     {
-        factory = std::make_shared<GNSSBlockFactory>();
         config = std::make_shared<InMemoryConfiguration>();
         item_size = sizeof(gr_complex);
         gnss_synchro = Gnss_Synchro();
@@ -200,7 +202,6 @@ public:
     void configure_receiver();
 
     gr::top_block_sptr top_block;
-    std::shared_ptr<GNSSBlockFactory> factory;
     std::shared_ptr<InMemoryConfiguration> config;
     Gnss_Synchro gnss_synchro;
     size_t item_size;
@@ -242,13 +243,13 @@ int GpsL1CATelemetryDecoderTest::generate_signal()
     else if (pid == 0)
         {
             execv(&generator_binary[0], parmList);
-            std::cout << "Return not expected. Must be an execv err." << std::endl;
+            std::cout << "Return not expected. Must be an execv err.\n";
             std::terminate();
         }
 
     waitpid(pid, &child_status, 0);
 
-    std::cout << "Signal and Observables RINEX and RAW files created." << std::endl;
+    std::cout << "Signal and Observables RINEX and RAW files created.\n";
     return 0;
 }
 
@@ -313,7 +314,7 @@ void GpsL1CATelemetryDecoderTest::check_results(arma::vec& true_time_s,
               << ", stdev=" << sqrt(error_var)
               << " (max,min)=" << max_error
               << "," << min_error
-              << " [Seconds]" << std::endl;
+              << " [Seconds]\n";
     std::cout.precision(ss);
 
     ASSERT_LT(rmse, 0.3E-6);
@@ -344,7 +345,7 @@ TEST_F(GpsL1CATelemetryDecoderTest, ValidationOfResults)
     // open true observables log file written by the simulator
     Tracking_True_Obs_Reader true_obs_data;
     int test_satellite_PRN = FLAGS_test_satellite_PRN;
-    std::cout << "Testing satellite PRN=" << test_satellite_PRN << std::endl;
+    std::cout << "Testing satellite PRN=" << test_satellite_PRN << '\n';
     std::string true_obs_file = std::string("./gps_l1_ca_obs_prn");
     true_obs_file.append(std::to_string(test_satellite_PRN));
     true_obs_file.append(".dat");
@@ -359,7 +360,7 @@ TEST_F(GpsL1CATelemetryDecoderTest, ValidationOfResults)
     std::shared_ptr<TrackingInterface> tracking = std::make_shared<GpsL1CaDllPllTracking>(config.get(), "Tracking_1C", 1, 1);
     // std::shared_ptr<TrackingInterface> tracking = std::make_shared<GpsL1CaDllPllCAidTracking>(config.get(), "Tracking_1C", 1, 1);
 
-    boost::shared_ptr<GpsL1CADllPllTelemetryDecoderTest_msg_rx> msg_rx = GpsL1CADllPllTelemetryDecoderTest_msg_rx_make();
+    auto msg_rx = GpsL1CADllPllTelemetryDecoderTest_msg_rx_make();
 
     // load acquisition data based on the first epoch of the true observations
     ASSERT_NO_THROW({
@@ -372,15 +373,15 @@ TEST_F(GpsL1CATelemetryDecoderTest, ValidationOfResults)
     // restart the epoch counter
     true_obs_data.restart();
 
-    std::cout << "Initial Doppler [Hz]=" << true_obs_data.doppler_l1_hz << " Initial code delay [Chips]=" << true_obs_data.prn_delay_chips << std::endl;
+    std::cout << "Initial Doppler [Hz]=" << true_obs_data.doppler_l1_hz << " Initial code delay [Chips]=" << true_obs_data.prn_delay_chips << '\n';
     gnss_synchro.Acq_delay_samples = (GPS_L1_CA_CODE_LENGTH_CHIPS - true_obs_data.prn_delay_chips / GPS_L1_CA_CODE_LENGTH_CHIPS) * baseband_sampling_freq * GPS_L1_CA_CODE_PERIOD_S;
     gnss_synchro.Acq_doppler_hz = true_obs_data.doppler_l1_hz;
     gnss_synchro.Acq_samplestamp_samples = 0;
 
-    std::shared_ptr<TelemetryDecoderInterface> tlm(new GpsL1CaTelemetryDecoder(config.get(), "TelemetryDecoder_1C", 1, 1));
+    std::shared_ptr<TelemetryDecoderInterface> tlm = std::make_shared<GpsL1CaTelemetryDecoder>(config.get(), "TelemetryDecoder_1C", 1, 1);
     tlm->set_channel(0);
 
-    boost::shared_ptr<GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx> tlm_msg_rx = GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_make();
+    std::shared_ptr<GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx> tlm_msg_rx = GpsL1CADllPllTelemetryDecoderTest_tlm_msg_rx_make();
 
     ASSERT_NO_THROW({
         tracking->set_channel(gnss_synchro.Channel_ID);
@@ -419,7 +420,7 @@ TEST_F(GpsL1CATelemetryDecoderTest, ValidationOfResults)
     // check results
     // load the true values
     int64_t nepoch = true_obs_data.num_epochs();
-    std::cout << "True observation epochs=" << nepoch << std::endl;
+    std::cout << "True observation epochs=" << nepoch << '\n';
 
     arma::vec true_timestamp_s = arma::zeros(nepoch, 1);
     arma::vec true_acc_carrier_phase_cycles = arma::zeros(nepoch, 1);
@@ -448,7 +449,7 @@ TEST_F(GpsL1CATelemetryDecoderTest, ValidationOfResults)
     }) << "Failure opening telemetry dump file";
 
     nepoch = tlm_dump.num_epochs();
-    std::cout << "Measured observation epochs=" << nepoch << std::endl;
+    std::cout << "Measured observation epochs=" << nepoch << '\n';
 
     arma::vec tlm_timestamp_s = arma::zeros(nepoch, 1);
     arma::vec tlm_TOW_at_Preamble = arma::zeros(nepoch, 1);
@@ -471,5 +472,5 @@ TEST_F(GpsL1CATelemetryDecoderTest, ValidationOfResults)
 
     check_results(true_timestamp_s, true_tow_s, tlm_timestamp_s, tlm_tow_s);
 
-    std::cout << "Test completed in " << elapsed_seconds.count() * 1e6 << " microseconds" << std::endl;
+    std::cout << "Test completed in " << elapsed_seconds.count() * 1e6 << " microseconds\n";
 }

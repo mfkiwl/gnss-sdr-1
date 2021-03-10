@@ -15,29 +15,15 @@
  *          <li> Gerald LaMountain, 2019. gerald(at)ece.neu.edu
  *          <li> Jordi Vila-Valls 2019. jvila(at)cttc.es
  *          </ul>
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  *
- * Copyright (C) 2010-2019  (see AUTHORS file for a list of contributors)
- *
- * GNSS-SDR is a software defined Global Navigation
- *          Satellite Systems receiver
- *
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Copyright (C) 2010-2020  (see AUTHORS file for a list of contributors)
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
- *
- * -------------------------------------------------------------------------
+ * -----------------------------------------------------------------------------
  */
 
 #include "nonlinear_tracking.h"
@@ -256,12 +242,12 @@ void UnscentedFilter::predict_sequential(const arma::vec& x_post, const arma::ma
     float kappa = 0.0;
     float beta = 2.0;
 
-    float lambda = std::pow(alpha, 2.0) * (static_cast<float>(nx) + kappa) - static_cast<float>(nx);
+    float lambda = std::pow(alpha, 2.0F) * (static_cast<float>(nx) + kappa) - static_cast<float>(nx);
 
     // Compute UT Weights
     float W0_m = lambda / (static_cast<float>(nx) + lambda);
-    float W0_c = lambda / (static_cast<float>(nx) + lambda) + (1 - std::pow(alpha, 2.0) + beta);
-    float Wi_m = 1.0 / (2.0 * (static_cast<float>(nx) + lambda));
+    float W0_c = lambda / (static_cast<float>(nx) + lambda) + (1 - std::pow(alpha, 2.0F) + beta);
+    float Wi_m = 1.0F / (2.0F * (static_cast<float>(nx) + lambda));
 
     // Propagate and evaluate sigma points
     arma::mat Xi_fact = arma::zeros(nx, nx);
@@ -311,12 +297,12 @@ void UnscentedFilter::update_sequential(const arma::vec& z_upd, const arma::vec&
     float kappa = 0.0;
     float beta = 2.0;
 
-    float lambda = std::pow(alpha, 2.0) * (static_cast<float>(nx) + kappa) - static_cast<float>(nx);
+    float lambda = std::pow(alpha, 2.0F) * (static_cast<float>(nx) + kappa) - static_cast<float>(nx);
 
     // Compute UT Weights
     float W0_m = lambda / (static_cast<float>(nx) + lambda);
-    float W0_c = lambda / (static_cast<float>(nx) + lambda) + (1.0 - std::pow(alpha, 2.0) + beta);
-    float Wi_m = 1.0 / (2.0 * (static_cast<float>(nx) + lambda));
+    float W0_c = lambda / (static_cast<float>(nx) + lambda) + (1.0F - std::pow(alpha, 2.0F) + beta);
+    float Wi_m = 1.0F / (2.0F * (static_cast<float>(nx) + lambda));
 
     // Propagate and evaluate sigma points
     arma::mat Xi_fact = arma::zeros(nx, nx);

@@ -1,19 +1,10 @@
-/* Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
- *
+/*
+ * GNSS-SDR is a Global Navigation Satellite System software-defined receiver.
  * This file is part of GNSS-SDR.
  *
- * GNSS-SDR is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Copyright (C) 2010-2019 (see AUTHORS file for a list of contributors)
+ * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * GNSS-SDR is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with GNSS-SDR. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GNSS_SDR_VOLK_QA_UTILS_H
@@ -25,7 +16,6 @@
 
 #include "volk_gnsssdr/volk_gnsssdr.h"          // for volk_gnsssdr_func_desc_t
 #include "volk_gnsssdr/volk_gnsssdr_complex.h"  // for lv_32fc_t
-#include <cstdbool>                             // for bool, false
 #include <cstdlib>                              // for NULL
 #include <map>                                  // for map
 #include <string>                               // for string, basic_string
@@ -145,14 +135,6 @@ bool run_volk_gnsssdr_tests(
     bool benchmark_mode = false);
 
 
-#define VOLK_RUN_TESTS(func, tol, scalar, len, iter)                                  \
-    BOOST_AUTO_TEST_CASE(func##_test)                                                 \
-    {                                                                                 \
-        BOOST_CHECK_EQUAL(run_volk_gnsssdr_tests(                                     \
-                              func##_get_func_desc(), (void (*)())func##_manual,      \
-                              std::string(#func), tol, scalar, len, iter, 0, "NULL"), \
-            0);                                                                       \
-    }
 #define VOLK_PROFILE(func, test_params, results) run_volk_gnsssdr_tests(func##_get_func_desc(), (void (*)())func##_manual, std::string(#func), test_params, results, "NULL")
 #define VOLK_PUPPET_PROFILE(func, puppet_master_func, test_params, results) run_volk_gnsssdr_tests(func##_get_func_desc(), (void (*)())func##_manual, std::string(#func), test_params, results, std::string(#puppet_master_func))
 typedef void (*volk_gnsssdr_fn_1arg)(void *, unsigned int, const char *);  // one input, operate in place
