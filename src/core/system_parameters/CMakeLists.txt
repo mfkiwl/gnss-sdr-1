@@ -17,6 +17,7 @@ set(SYSTEM_PARAMETERS_SOURCES
     galileo_cnav_message.cc
     galileo_fnav_message.cc
     galileo_inav_message.cc
+    galileo_reduced_ced.cc
     beidou_dnav_navigation_message.cc
     beidou_dnav_ephemeris.cc
     sbas_ephemeris.cc
@@ -24,6 +25,7 @@ set(SYSTEM_PARAMETERS_SOURCES
     glonass_gnav_ephemeris.cc
     glonass_gnav_utc_model.cc
     glonass_gnav_navigation_message.cc
+    reed_solomon.cc
 )
 
 set(SYSTEM_PARAMETERS_HEADERS
@@ -51,6 +53,7 @@ set(SYSTEM_PARAMETERS_HEADERS
     galileo_fnav_message.h
     galileo_has_data.h
     galileo_inav_message.h
+    galileo_reduced_ced.h
     sbas_ephemeris.h
     gps_cnav_ephemeris.h
     gps_cnav_navigation_message.h
@@ -82,6 +85,7 @@ set(SYSTEM_PARAMETERS_HEADERS
     Beidou_B3I.h
     Beidou_DNAV.h
     MATH_CONSTANTS.h
+    reed_solomon.h
 )
 
 list(SORT SYSTEM_PARAMETERS_HEADERS)
