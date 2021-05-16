@@ -173,8 +173,8 @@ $ sudo yum install make automake gcc gcc-c++ kernel-devel cmake git boost-devel 
        protobuf-devel protobuf-compiler
 ```
 
-Once you have installed these packages, you can jump directly to
-[download the source code and build GNSS-SDR](#download-and-build-linux).
+In Fedora 33 and above, you will need to add `gmp-devel` to the package list.
+Optionally, you can add `uhd-devel` starting from Fedora 32.
 
 #### openSUSE
 
@@ -322,11 +322,11 @@ $ sudo ldconfig
 #### Install [Glog](https://github.com/google/glog "Glog's Homepage"), a library that implements application-level logging:
 
 ```
-$ wget https://github.com/google/glog/archive/v0.4.0.tar.gz
-$ tar xvfz v0.4.0.tar.gz
-$ cd glog-0.4.0
-$ ./autogen.sh
-$ ./configure
+$ wget https://github.com/google/glog/archive/v0.5.0.tar.gz
+$ tar xvfz v0.5.0.tar.gz
+$ cd glog-0.5.0
+$ mkdir build && cd build
+$ cmake ..
 $ make
 $ sudo make install
 $ sudo ldconfig
@@ -395,9 +395,9 @@ $ sudo apt-get install autoconf automake libtool curl make g++ unzip
 and then:
 
 ```
-$ wget https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protobuf-cpp-3.15.8.tar.gz
-$ tar xvfz protobuf-cpp-3.15.8.tar.gz
-$ cd protobuf-3.15.8
+$ wget https://github.com/protocolbuffers/protobuf/releases/download/v3.16.0/protobuf-cpp-3.16.0.tar.gz
+$ tar xvfz protobuf-cpp-3.16.0.tar.gz
+$ cd protobuf-3.16.0
 $ ./autogen.sh
 $ ./configure
 $ make

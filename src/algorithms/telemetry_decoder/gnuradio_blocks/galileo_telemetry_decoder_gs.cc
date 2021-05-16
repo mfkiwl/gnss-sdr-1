@@ -94,7 +94,10 @@ galileo_telemetry_decoder_gs::galileo_telemetry_decoder_gs(
                 d_codelength = static_cast<int32_t>(d_frame_length_symbols);
                 d_datalength = (d_codelength / d_nn) - d_mm;
                 d_max_symbols_without_valid_frame = GALILEO_INAV_PAGE_SYMBOLS * 30;  // rise alarm 60 seconds without valid tlm
-
+                if (conf.enable_reed_solomon == true)
+                    {
+                        d_inav_nav.enable_reed_solomon();
+                    }
                 break;
             }
         case 2:  // FNAV
