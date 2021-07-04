@@ -65,6 +65,8 @@ All notable changes to GNSS-SDR will be documented in this file.
   Boost >= 1.74.
 - Fix linking of the `<filesystem>` library when using GCC 8.x and GNU Radio >=
   3.8.
+- If the Matio library is not found, now it is configured and built by CMake
+  instead of using autotools.
 
 ### Improvements in Usability:
 
@@ -97,6 +99,15 @@ All notable changes to GNSS-SDR will be documented in this file.
   different settings for the `-DENABLE_FMCOMMS2` or `-DENABLE_PLUTOSDR` building
   options.
 - Fix building when using UHD v4.0.0.0.
+- Fix building for `-DENABLE_FMCOMMS2=ON` and/or `-DENABLE_PLUTOSDR=ON` when the
+  built-in gr-iio module introduced in GNU Radio 3.10 is found. This in-tree GNU
+  Radio module takes precedence over the gr-iio package provided at
+  https://github.com/analogdevicesinc/gr-iio. If the GNU Radio module is found,
+  the other one is ignored.
+- File `changelog.md` renamed to the more usual `CHANGELOG.md` uppercase name.
+- New global configuration parameter `GNSS-SDR.observable_interval_ms`, set by
+  default to 20 [ms], allows to control the internal rate at which computed
+  observables sets are processed (50 observables sets per second by default).
 
 See the definitions of concepts and metrics at
 https://gnss-sdr.org/design-forces/
@@ -665,6 +676,8 @@ features and bug fixes:
   features.log in the building directory.
 - Improved information provided to the user in case of building configuration
   and runtime failures.
+- Remove abandoned building option `-DENABLE_GN3S` and `Gn3s_Signal_Source`
+  implementation.
 
 See the definitions of concepts and metrics at
 https://gnss-sdr.org/design-forces/

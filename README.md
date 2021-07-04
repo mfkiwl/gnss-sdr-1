@@ -46,7 +46,7 @@ a framework for the development of new features. Please visit
 [https://gnss-sdr.org](https://gnss-sdr.org "GNSS-SDR website") for more
 information about this open-source, software-defined GNSS receiver.
 
-:sparkles: See what's new in the [changelog](./docs/changelog.md).
+:sparkles: See what's new in the [changelog](./docs/CHANGELOG.md).
 
 # Table of Contents
 
@@ -398,8 +398,8 @@ $ sudo ldconfig
 #### Download the [Google C++ Testing Framework](https://github.com/google/googletest "Googletest Homepage"), also known as Google Test:
 
 ```
-$ wget https://github.com/google/googletest/archive/v1.10.x.zip
-$ unzip v1.10.x.zip
+$ wget https://github.com/google/googletest/archive/release-1.11.0.zip
+$ unzip release-1.11.0.zip
 ```
 
 Please **DO NOT build or install** Google Test. Every user needs to compile
@@ -423,10 +423,10 @@ downloaded resides. Just type in your terminal (or add it to your
 `$HOME/.bashrc` file for a permanent solution) the following line:
 
 ```
-export GTEST_DIR=/home/username/googletest-1.10.x
+export GTEST_DIR=/home/username/googletest-release-1.11.0
 ```
 
-changing `/home/username/googletest-1.10.x` by the actual path where you
+changing `/home/username/googletest-release-1.11.0` by the actual path where you
 unpacked Google Test. If the CMake script does not find that folder, or the
 environment variable is not defined, or the source code is not installed by a
 package, then it will download a fresh copy of the Google Test source code and
@@ -470,9 +470,9 @@ $ sudo apt-get install autoconf automake libtool curl make g++ unzip
 and then:
 
 ```
-$ wget https://github.com/protocolbuffers/protobuf/releases/download/v3.17.1/protobuf-cpp-3.17.1.tar.gz
-$ tar xvfz protobuf-cpp-3.17.1.tar.gz
-$ cd protobuf-3.17.1
+$ wget https://github.com/protocolbuffers/protobuf/releases/download/v3.17.3/protobuf-cpp-3.17.3.tar.gz
+$ tar xvfz protobuf-cpp-3.17.3.tar.gz
+$ cd protobuf-3.17.3
 $ ./autogen.sh
 $ ./configure
 $ make
@@ -518,7 +518,7 @@ gnss-sdr with the following structure:
  |-----utils    <- some utilities (e.g. Matlab scripts).
 ```
 
-By default, you will be in the 'master' branch of the Git repository, which
+By default, you will be in the 'main' branch of the Git repository, which
 corresponds to the latest stable release. If you want to try the latest
 developments, you can use the 'next' branch by going to the newly created
 gnss-sdr folder doing:
@@ -968,8 +968,8 @@ $ git remote add upstream https://github.com/gnss-sdr/gnss-sdr.git
 and then you can update your working copy by doing:
 
 ```
-$ git checkout master        # Switch to branch you want to update
-$ git pull upstream master   # Download the newest code from our repository
+$ git checkout main        # Switch to branch you want to update
+$ git pull upstream main   # Download the newest code from our repository
 ```
 
 or, if you want to test the latest developments:
@@ -2139,9 +2139,9 @@ processed.
 Another interesting option is working in real-time with an RF front-end. We
 provide drivers for UHD-compatible hardware such as the
 [USRP family](https://www.ettus.com/product), for OsmoSDR and other front-ends
-(HackRF, bladeRF, LimeSDR), for the GN3S v2 USB dongle, and for some DVB-T USB
-dongles. Start with a low number of channels and then increase it in order to
-test how many channels your processor can handle in real-time.
+(HackRF, bladeRF, LimeSDR, and for some DVB-T USB dongles). Start with a low
+number of channels and then increase it in order to test how many channels your
+processor can handle in real-time.
 
 You can find more information at the
 [GNSS-SDR Documentation page](https://gnss-sdr.org/docs/) or directly asking to
