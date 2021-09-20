@@ -18,6 +18,7 @@
 #include "gps_l2c_telemetry_decoder_gs.h"
 #include "GPS_L2C.h"  // for GPS_L2_CNAV_DATA_PAGE_BITS, GPS_L...
 #include "display.h"
+#include "gnss_sdr_make_unique.h"  // for std::make_unique in C++11
 #include "gnss_synchro.h"
 #include "gps_cnav_ephemeris.h"  // for Gps_CNAV_Ephemeris
 #include "gps_cnav_iono.h"       // for Gps_CNAV_Iono
@@ -54,6 +55,15 @@ gps_l2c_telemetry_decoder_gs::gps_l2c_telemetry_decoder_gs(
     this->message_port_register_out(pmt::mp("telemetry"));
     // Control messages to tracking block
     this->message_port_register_out(pmt::mp("telemetry_to_trk"));
+    d_enable_navdata_monitor = conf.enable_navdata_monitor;
+    if (d_enable_navdata_monitor)
+        {
+            // register nav message monitor out
+            this->message_port_register_out(pmt::mp("Nav_msg_from_TLM"));
+            d_nav_msg_packet.system = std::string("G");
+            d_nav_msg_packet.signal = std::string("2S");
+        }
+
     d_last_valid_preamble = 0;
     d_sent_tlm_failed_msg = false;
     d_max_symbols_without_valid_frame = GPS_L2_CNAV_DATA_PAGE_BITS * GPS_L2_SYMBOLS_PER_BIT * 5;  // rise alarm if 5 consecutive subframes have no valid CRC
@@ -78,6 +88,18 @@ gps_l2c_telemetry_decoder_gs::gps_l2c_telemetry_decoder_gs(
 
     d_sample_counter = 0;
     d_flag_PLL_180_deg_phase_locked = false;
+
+    d_dump_crc_stats = conf.dump_crc_stats;
+    if (d_dump_crc_stats)
+        {
+            // initialize the telemetry CRC statistics class
+            d_Tlm_CRC_Stats = std::make_unique<Tlm_CRC_Stats>();
+            d_Tlm_CRC_Stats->initialize(conf.dump_crc_stats_filename);
+        }
+    else
+        {
+            d_Tlm_CRC_Stats = nullptr;
+        }
 }
 
 
@@ -149,6 +171,12 @@ void gps_l2c_telemetry_decoder_gs::set_channel(int channel)
                         }
                 }
         }
+    if (d_dump_crc_stats)
+        {
+            // set the channel number for the telemetry CRC statistics
+            // disable the telemetry CRC statistics if there is a problem opening the output file
+            d_dump_crc_stats = d_Tlm_CRC_Stats->set_channel(d_channel);
+        }
 }
 
 
@@ -174,6 +202,13 @@ int gps_l2c_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
     // add the symbol to the decoder
     const uint8_t symbol_clip = static_cast<uint8_t>(in[0].Prompt_I > 0) * 255;
     flag_new_cnav_frame = cnav_msg_decoder_add_symbol(&d_cnav_decoder, symbol_clip, &msg, &delay);
+    if (d_dump_crc_stats && (d_cnav_decoder.part1.message_lock || d_cnav_decoder.part2.message_lock))
+        {
+            // update CRC statistics
+            d_Tlm_CRC_Stats->update_CRC_stats((d_cnav_decoder.part1.crc_ok || d_cnav_decoder.part2.crc_ok));
+            d_cnav_decoder.part1.message_lock = false;
+            d_cnav_decoder.part2.message_lock = false;
+        }
 
     consume_each(1);  // one by one
 
@@ -199,7 +234,7 @@ int gps_l2c_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
     // check if new CNAV frame is available
     if (flag_new_cnav_frame == true)
         {
-            if (d_cnav_decoder.part1.invert == true or d_cnav_decoder.part2.invert == true)
+            if (d_cnav_decoder.part1.invert == true || d_cnav_decoder.part2.invert == true)
                 {
                     d_flag_PLL_180_deg_phase_locked = true;
                 }
@@ -212,6 +247,11 @@ int gps_l2c_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
             for (uint32_t i = 0; i < GPS_L2_CNAV_DATA_PAGE_BITS; i++)
                 {
                     raw_bits[GPS_L2_CNAV_DATA_PAGE_BITS - 1 - i] = ((msg.raw_msg[i / 8] >> (7 - i % 8)) & 1U);
+                }
+
+            if (d_enable_navdata_monitor)
+                {
+                    d_nav_msg_packet.nav_message = raw_bits.to_string();
                 }
 
             d_CNAV_Message.decode_page(raw_bits);
@@ -248,6 +288,15 @@ int gps_l2c_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
             d_TOW_at_current_symbol = static_cast<double>(msg.tow) * 6.0 + static_cast<double>(delay) * GPS_L2_M_PERIOD_S + 12 * GPS_L2_M_PERIOD_S;
             // d_TOW_at_current_symbol = floor(d_TOW_at_current_symbol * 1000.0) / 1000.0;
             d_flag_valid_word = true;
+
+            if (d_enable_navdata_monitor && !d_nav_msg_packet.nav_message.empty())
+                {
+                    d_nav_msg_packet.prn = static_cast<int32_t>(current_synchro_data.PRN);
+                    d_nav_msg_packet.tow_at_current_symbol_ms = static_cast<int32_t>(d_TOW_at_current_symbol * 1000.0);
+                    const std::shared_ptr<Nav_Message_Packet> tmp_obj = std::make_shared<Nav_Message_Packet>(d_nav_msg_packet);
+                    this->message_port_pub(pmt::mp("Nav_msg_from_TLM"), pmt::make_any(tmp_obj));
+                    d_nav_msg_packet.nav_message = "";
+                }
         }
     else
         {

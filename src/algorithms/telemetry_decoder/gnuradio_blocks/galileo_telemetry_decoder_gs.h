@@ -25,12 +25,15 @@
 #include "galileo_inav_message.h"
 #include "gnss_block_interface.h"
 #include "gnss_satellite.h"
+#include "nav_message_packet.h"
 #include "tlm_conf.h"
+#include "tlm_crc_stats.h"
 #include <boost/circular_buffer.hpp>
 #include <gnuradio/block.h>  // for block
 #include <gnuradio/types.h>  // for gr_vector_const_void_star
 #include <cstdint>
 #include <fstream>
+#include <memory>  // for std::unique_ptr
 #include <string>
 #include <vector>
 
@@ -105,6 +108,9 @@ private:
     Galileo_Inav_Message d_inav_nav;
     Galileo_Fnav_Message d_fnav_nav;
 
+    Nav_Message_Packet d_nav_msg_packet;
+    std::unique_ptr<Tlm_CRC_Stats> d_Tlm_CRC_Stats;
+
     double d_delta_t;  // GPS-GALILEO time offset
 
     uint64_t d_sample_counter;
@@ -142,6 +148,8 @@ private:
     bool d_first_eph_sent;
     bool d_cnav_dummy_page;
     bool d_print_cnav_page;
+    bool d_enable_navdata_monitor;
+    bool d_dump_crc_stats;
 };
 
 

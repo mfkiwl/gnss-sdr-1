@@ -19,14 +19,16 @@
 */
 
 #include "gps_l1_ca_telemetry_decoder_gs.h"
-#include "gps_ephemeris.h"  // for Gps_Ephemeris
-#include "gps_iono.h"       // for Gps_Iono
-#include "gps_utc_model.h"  // for Gps_Utc_Model
+#include "gnss_sdr_make_unique.h"  // for std::make_unique in C++11
+#include "gps_ephemeris.h"         // for Gps_Ephemeris
+#include "gps_iono.h"              // for Gps_Iono
+#include "gps_utc_model.h"         // for Gps_Utc_Model
 #include "tlm_utils.h"
 #include <glog/logging.h>
 #include <gnuradio/io_signature.h>
 #include <pmt/pmt.h>        // for make_any
 #include <pmt/pmt_sugar.h>  // for mp
+#include <bitset>           // for bitset
 #include <cmath>            // for round
 #include <cstddef>          // for size_t
 #include <cstring>          // for memcpy
@@ -68,6 +70,15 @@ gps_l1_ca_telemetry_decoder_gs::gps_l1_ca_telemetry_decoder_gs(
     this->message_port_register_out(pmt::mp("telemetry"));
     // Control messages to tracking block
     this->message_port_register_out(pmt::mp("telemetry_to_trk"));
+    d_enable_navdata_monitor = conf.enable_navdata_monitor;
+    if (d_enable_navdata_monitor)
+        {
+            // register nav message monitor out
+            this->message_port_register_out(pmt::mp("Nav_msg_from_TLM"));
+            d_nav_msg_packet.system = std::string("G");
+            d_nav_msg_packet.signal = std::string("1C");
+        }
+
     d_last_valid_preamble = 0;
     d_sent_tlm_failed_msg = false;
 
@@ -118,6 +129,18 @@ gps_l1_ca_telemetry_decoder_gs::gps_l1_ca_telemetry_decoder_gs(
     d_flag_PLL_180_deg_phase_locked = false;
     d_prev_GPS_frame_4bytes = 0;
     d_symbol_history.set_capacity(d_required_symbols);
+
+    d_dump_crc_stats = conf.dump_crc_stats;
+    if (d_dump_crc_stats)
+        {
+            // initialize the telemetry CRC statistics class
+            d_Tlm_CRC_Stats = std::make_unique<Tlm_CRC_Stats>();
+            d_Tlm_CRC_Stats->initialize(conf.dump_crc_stats_filename);
+        }
+    else
+        {
+            d_Tlm_CRC_Stats = nullptr;
+        }
 }
 
 
@@ -219,6 +242,12 @@ void gps_l1_ca_telemetry_decoder_gs::set_channel(int32_t channel)
                         }
                 }
         }
+    if (d_dump_crc_stats)
+        {
+            // set the channel number for the telemetry CRC statistics
+            // disable the telemetry CRC statistics if there is a problem opening the output file
+            d_dump_crc_stats = d_Tlm_CRC_Stats->set_channel(d_channel);
+        }
 }
 
 
@@ -263,7 +292,13 @@ bool gps_l1_ca_telemetry_decoder_gs::decode_subframe()
                             GPS_frame_4bytes ^= 0x3FFFFFC0U;  // invert the data bits (using XOR)
                         }
                     // check parity. If ANY word inside the subframe fails the parity, set subframe_synchro_confirmation = false
-                    if (not gps_l1_ca_telemetry_decoder_gs::gps_word_parityCheck(GPS_frame_4bytes))
+                    bool crc_ok = gps_l1_ca_telemetry_decoder_gs::gps_word_parityCheck(GPS_frame_4bytes);
+                    if (d_dump_crc_stats)
+                        {
+                            // update CRC statistics
+                            d_Tlm_CRC_Stats->update_CRC_stats(crc_ok);
+                        }
+                    if (!crc_ok)
                         {
                             subframe_synchro_confirmation = false;
                         }
@@ -284,8 +319,24 @@ bool gps_l1_ca_telemetry_decoder_gs::decode_subframe()
     // NEW GPS SUBFRAME HAS ARRIVED!
     if (subframe_synchro_confirmation)
         {
+            if (d_enable_navdata_monitor)
+                {
+                    uint32_t gps_word;
+                    std::bitset<GPS_SUBFRAME_BITS> subframe_bits;
+                    std::bitset<GPS_WORD_BITS + 2> word_bits;
+                    for (int32_t i = 0; i < 10; i++)
+                        {
+                            memcpy(&gps_word, &subframe[i * 4], sizeof(char) * 4);
+                            word_bits = std::bitset<(GPS_WORD_BITS + 2)>(gps_word);
+                            for (int32_t j = 0; j < GPS_WORD_BITS; j++)
+                                {
+                                    subframe_bits[GPS_WORD_BITS * (9 - i) + j] = word_bits[j];
+                                }
+                        }
+                    d_nav_msg_packet.nav_message = subframe_bits.to_string();
+                }
             const int32_t subframe_ID = d_nav.subframe_decoder(subframe.data());  // decode the subframe
-            if (subframe_ID > 0 and subframe_ID < 6)
+            if (subframe_ID > 0 && subframe_ID < 6)
                 {
                     std::cout << "New GPS NAV message received in channel " << this->d_channel << ": "
                               << "subframe "
@@ -372,7 +423,7 @@ int gps_l1_ca_telemetry_decoder_gs::general_work(int noutput_items __attribute__
     consume_each(1);
     d_flag_preamble = false;
     // check if there is a problem with the telemetry of the current satellite
-    if (d_stat < 2 and d_sent_tlm_failed_msg == false)
+    if (d_stat < 2 && d_sent_tlm_failed_msg == false)
         {
             if ((d_sample_counter - d_last_valid_preamble) > d_max_symbols_without_valid_frame)
                 {
@@ -499,6 +550,15 @@ int gps_l1_ca_telemetry_decoder_gs::general_work(int noutput_items __attribute__
         {
             current_symbol.TOW_at_current_symbol_ms = d_TOW_at_current_symbol_ms;
             current_symbol.Flag_valid_word = d_flag_TOW_set;
+
+            if (d_enable_navdata_monitor && !d_nav_msg_packet.nav_message.empty())
+                {
+                    d_nav_msg_packet.prn = static_cast<int32_t>(current_symbol.PRN);
+                    d_nav_msg_packet.tow_at_current_symbol_ms = static_cast<int32_t>(d_TOW_at_current_symbol_ms);
+                    const std::shared_ptr<Nav_Message_Packet> tmp_obj = std::make_shared<Nav_Message_Packet>(d_nav_msg_packet);
+                    this->message_port_pub(pmt::mp("Nav_msg_from_TLM"), pmt::make_any(tmp_obj));
+                    d_nav_msg_packet.nav_message = "";
+                }
 
             if (d_flag_PLL_180_deg_phase_locked == true)
                 {

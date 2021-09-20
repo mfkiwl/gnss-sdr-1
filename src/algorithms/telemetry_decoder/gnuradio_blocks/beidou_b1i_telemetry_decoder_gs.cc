@@ -23,6 +23,7 @@
 #include "beidou_dnav_iono.h"
 #include "beidou_dnav_utc_model.h"
 #include "display.h"
+#include "gnss_sdr_make_unique.h"  // for std::make_unique in C++11
 #include "gnss_synchro.h"
 #include "tlm_utils.h"
 #include <glog/logging.h>
@@ -56,6 +57,15 @@ beidou_b1i_telemetry_decoder_gs::beidou_b1i_telemetry_decoder_gs(
     this->message_port_register_out(pmt::mp("telemetry"));
     // Control messages to tracking block
     this->message_port_register_out(pmt::mp("telemetry_to_trk"));
+    d_enable_navdata_monitor = conf.enable_navdata_monitor;
+    if (d_enable_navdata_monitor)
+        {
+            // register nav message monitor out
+            this->message_port_register_out(pmt::mp("Nav_msg_from_TLM"));
+            d_nav_msg_packet.system = std::string("C");
+            d_nav_msg_packet.signal = std::string("B1");
+        }
+
     // initialize internal vars
     d_dump_filename = conf.dump_filename;
     d_dump = conf.dump;
@@ -100,6 +110,18 @@ beidou_b1i_telemetry_decoder_gs::beidou_b1i_telemetry_decoder_gs(
     d_flag_preamble = false;
     d_channel = 0;
     flag_SOW_set = false;
+    d_dump_crc_stats = conf.dump_crc_stats;
+    d_dump_crc_stats = conf.dump_crc_stats;
+    if (d_dump_crc_stats)
+        {
+            // initialize the telemetry CRC statistics class
+            d_Tlm_CRC_Stats = std::make_unique<Tlm_CRC_Stats>();
+            d_Tlm_CRC_Stats->initialize(conf.dump_crc_stats_filename);
+        }
+    else
+        {
+            d_Tlm_CRC_Stats = nullptr;
+        }
 }
 
 
@@ -169,7 +191,7 @@ void beidou_b1i_telemetry_decoder_gs::decode_bch15_11_01(const int32_t *bits, st
 
     err = reg[0] + reg[1] * 2 + reg[2] * 4 + reg[3] * 8;
 
-    if (err > 0 and err < 16)
+    if (err > 0 && err < 16)
         {
             decbits[errind[err - 1]] *= -1;
         }
@@ -240,7 +262,12 @@ void beidou_b1i_telemetry_decoder_gs::decode_subframe(float *frame_symbols)
                 }
         }
 
-    if (d_satellite.get_PRN() > 0 and d_satellite.get_PRN() < 6)
+    if (d_enable_navdata_monitor)
+        {
+            d_nav_msg_packet.nav_message = data_bits;
+        }
+
+    if (d_satellite.get_PRN() > 0 && d_satellite.get_PRN() < 6)
         {
             d_nav.d2_subframe_decoder(data_bits);
         }
@@ -250,7 +277,8 @@ void beidou_b1i_telemetry_decoder_gs::decode_subframe(float *frame_symbols)
         }
 
     // 3. Check operation executed correctly
-    if (d_nav.get_flag_CRC_test() == true)
+    bool crc_ok = d_nav.get_flag_CRC_test();
+    if (crc_ok)
         {
             DLOG(INFO) << "BeiDou DNAV CRC correct in channel " << d_channel
                        << " from satellite " << d_satellite;
@@ -259,6 +287,11 @@ void beidou_b1i_telemetry_decoder_gs::decode_subframe(float *frame_symbols)
         {
             DLOG(INFO) << "BeiDou DNAV CRC error in channel " << d_channel
                        << " from satellite " << d_satellite;
+        }
+    if (d_dump_crc_stats)
+        {
+            // update CRC statistics
+            d_Tlm_CRC_Stats->update_CRC_stats(crc_ok);
         }
     // 4. Push the new navigation data to the queues
     if (d_nav.have_new_ephemeris() == true)
@@ -309,7 +342,7 @@ void beidou_b1i_telemetry_decoder_gs::set_satellite(const Gnss_Satellite &satell
     d_nav.set_signal_type(1);  // BDS: data source (0:unknown,1:B1I,2:B1Q,3:B2I,4:B2Q,5:B3I,6:B3Q)
 
     // Update tel dec parameters for D2 NAV Messages
-    if (sat_prn > 0 and sat_prn < 6)
+    if (sat_prn > 0 && sat_prn < 6)
         {
             d_symbols_per_preamble = BEIDOU_DNAV_PREAMBLE_LENGTH_SYMBOLS;
             d_samples_per_preamble = BEIDOU_DNAV_PREAMBLE_LENGTH_SYMBOLS;
@@ -381,6 +414,12 @@ void beidou_b1i_telemetry_decoder_gs::set_channel(int32_t channel)
                             LOG(WARNING) << "channel " << d_channel << ": exception opening Beidou TLM dump file. " << e.what();
                         }
                 }
+        }
+    if (d_dump_crc_stats)
+        {
+            // set the channel number for the telemetry CRC statistics
+            // disable the telemetry CRC statistics if there is a problem opening the output file
+            d_dump_crc_stats = d_Tlm_CRC_Stats->set_channel(d_channel);
         }
 }
 
@@ -556,7 +595,7 @@ int beidou_b1i_telemetry_decoder_gs::general_work(int noutput_items __attribute_
         }
     // UPDATE GNSS SYNCHRO DATA
     // 2. Add the telemetry decoder information
-    if (this->d_flag_preamble == true and d_nav.get_flag_new_SOW_available() == true)
+    if (this->d_flag_preamble == true && d_nav.get_flag_new_SOW_available() == true)
         // update TOW at the preamble instant
         {
             // Reporting sow as gps time of week
@@ -568,7 +607,7 @@ int beidou_b1i_telemetry_decoder_gs::general_work(int noutput_items __attribute_
             flag_SOW_set = true;
             d_nav.set_flag_new_SOW_available(false);
 
-            if (last_d_TOW_at_current_symbol_ms != 0 and abs(static_cast<int64_t>(d_TOW_at_current_symbol_ms) - int64_t(last_d_TOW_at_current_symbol_ms)) > static_cast<int64_t>(d_symbol_duration_ms))
+            if (last_d_TOW_at_current_symbol_ms != 0 && abs(static_cast<int64_t>(d_TOW_at_current_symbol_ms) - int64_t(last_d_TOW_at_current_symbol_ms)) > static_cast<int64_t>(d_symbol_duration_ms))
                 {
                     LOG(INFO) << "Warning: BEIDOU B1I TOW update in ch " << d_channel
                               << " does not match the TLM TOW counter " << static_cast<int64_t>(d_TOW_at_current_symbol_ms) - int64_t(last_d_TOW_at_current_symbol_ms) << " ms \n";
@@ -580,6 +619,15 @@ int beidou_b1i_telemetry_decoder_gs::general_work(int noutput_items __attribute_
                 {
                     d_last_valid_preamble = d_sample_counter;
                     d_flag_valid_word = true;
+                }
+
+            if (d_enable_navdata_monitor && !d_nav_msg_packet.nav_message.empty())
+                {
+                    d_nav_msg_packet.prn = static_cast<int32_t>(current_symbol.PRN);
+                    d_nav_msg_packet.tow_at_current_symbol_ms = static_cast<int32_t>(d_TOW_at_current_symbol_ms);
+                    const std::shared_ptr<Nav_Message_Packet> tmp_obj = std::make_shared<Nav_Message_Packet>(d_nav_msg_packet);
+                    this->message_port_pub(pmt::mp("Nav_msg_from_TLM"), pmt::make_any(tmp_obj));
+                    d_nav_msg_packet.nav_message = "";
                 }
         }
     else

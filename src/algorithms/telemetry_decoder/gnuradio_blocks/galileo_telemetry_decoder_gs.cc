@@ -29,7 +29,9 @@
 #include "galileo_has_page.h"        // For Galileo_HAS_page
 #include "galileo_iono.h"            // for Galileo_Iono
 #include "galileo_utc_model.h"       // for Galileo_Utc_Model
+#include "gnss_sdr_make_unique.h"    // for std::make_unique in C++11
 #include "gnss_synchro.h"
+#include "tlm_crc_stats.h"
 #include "tlm_utils.h"
 #include <glog/logging.h>
 #include <gnuradio/io_signature.h>
@@ -67,7 +69,12 @@ galileo_telemetry_decoder_gs::galileo_telemetry_decoder_gs(
     this->message_port_register_out(pmt::mp("telemetry_to_trk"));
     // register Gal E6 messages HAS out
     this->message_port_register_out(pmt::mp("E6_HAS_from_TLM"));
-
+    d_enable_navdata_monitor = conf.enable_navdata_monitor;
+    if (d_enable_navdata_monitor)
+        {
+            // register nav message monitor out
+            this->message_port_register_out(pmt::mp("Nav_msg_from_TLM"));
+        }
     d_last_valid_preamble = 0;
     d_sent_tlm_failed_msg = false;
     d_band = '1';
@@ -81,6 +88,17 @@ galileo_telemetry_decoder_gs::galileo_telemetry_decoder_gs(
     d_frame_type = frame_type;
     DLOG(INFO) << "Initializing GALILEO UNIFIED TELEMETRY DECODER";
 
+    d_dump_crc_stats = conf.dump_crc_stats;
+    if (d_dump_crc_stats)
+        {
+            // initialize the telemetry CRC statistics class
+            d_Tlm_CRC_Stats = std::make_unique<Tlm_CRC_Stats>();
+            d_Tlm_CRC_Stats->initialize(conf.dump_crc_stats_filename);
+        }
+    else
+        {
+            d_Tlm_CRC_Stats = nullptr;
+        }
     switch (d_frame_type)
         {
         case 1:  // INAV
@@ -316,6 +334,11 @@ void galileo_telemetry_decoder_gs::decode_INAV_word(float *page_part_symbols, in
                 }
         }
 
+    if (d_enable_navdata_monitor)
+        {
+            d_nav_msg_packet.nav_message = page_String;
+        }
+
     if (page_part_bits[0] == 1)
         {
             // DECODE COMPLETE WORD (even + odd) and TEST CRC
@@ -462,6 +485,11 @@ void galileo_telemetry_decoder_gs::decode_FNAV_word(float *page_symbols, int32_t
                 {
                     page_String.push_back('0');
                 }
+        }
+
+    if (d_enable_navdata_monitor)
+        {
+            d_nav_msg_packet.nav_message = page_String;
         }
 
     // DECODE COMPLETE WORD (even + odd) and TEST CRC
@@ -615,6 +643,13 @@ void galileo_telemetry_decoder_gs::set_channel(int32_t channel)
                             LOG(WARNING) << "channel " << d_channel << " Exception opening trk dump file " << e.what();
                         }
                 }
+        }
+
+    if (d_dump_crc_stats)
+        {
+            // set the channel number for the telemetry CRC statistics
+            // disable the telemetry CRC statistics if there is a problem opening the output file
+            d_dump_crc_stats = d_Tlm_CRC_Stats->set_channel(d_channel);
         }
 }
 
@@ -787,8 +822,15 @@ int galileo_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
                                 return -1;
                                 break;
                             }
+                        bool crc_ok = (d_inav_nav.get_flag_CRC_test() || d_fnav_nav.get_flag_CRC_test() || d_cnav_nav.get_flag_CRC_test());
+                        if (d_dump_crc_stats)
+                            {
+                                // update CRC statistics
+                                d_Tlm_CRC_Stats->update_CRC_stats(crc_ok);
+                            }
+
                         d_preamble_index = d_sample_counter;  // record the preamble sample stamp (t_P)
-                        if (d_inav_nav.get_flag_CRC_test() == true or d_fnav_nav.get_flag_CRC_test() == true or d_cnav_nav.get_flag_CRC_test() == true)
+                        if (crc_ok)
                             {
                                 d_CRC_error_counter = 0;
                                 d_flag_preamble = true;  // valid preamble indicator (initialized to false every work())
@@ -803,9 +845,10 @@ int galileo_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
                         else
                             {
                                 d_CRC_error_counter++;
-                                if ((d_CRC_error_counter > CRC_ERROR_LIMIT) and (d_frame_type != 3))
+                                if ((d_CRC_error_counter > CRC_ERROR_LIMIT) && (d_frame_type != 3))
                                     {
                                         DLOG(INFO) << "Lost of frame sync SAT " << this->d_satellite;
+                                        gr::thread::scoped_lock lock(d_setlock);
                                         d_flag_frame_sync = false;
                                         d_stat = 0;
                                         d_TOW_at_current_symbol_ms = 0;
@@ -860,6 +903,16 @@ int galileo_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
                                         d_TOW_at_current_symbol_ms += d_PRN_code_period_ms;
                                     }
                             }
+                        if (d_enable_navdata_monitor && !d_nav_msg_packet.nav_message.empty())
+                            {
+                                d_nav_msg_packet.system = std::string(1, current_symbol.System);
+                                d_nav_msg_packet.signal = std::string(current_symbol.Signal);
+                                d_nav_msg_packet.prn = static_cast<int32_t>(current_symbol.PRN);
+                                d_nav_msg_packet.tow_at_current_symbol_ms = static_cast<int32_t>(d_TOW_at_current_symbol_ms);
+                                const std::shared_ptr<Nav_Message_Packet> tmp_obj = std::make_shared<Nav_Message_Packet>(d_nav_msg_packet);
+                                this->message_port_pub(pmt::mp("Nav_msg_from_TLM"), pmt::make_any(tmp_obj));
+                                d_nav_msg_packet.nav_message = "";
+                            }
                         break;
                     }
                 case 2:  // FNAV
@@ -897,6 +950,16 @@ int galileo_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
                                 else
                                     {
                                         d_TOW_at_current_symbol_ms += static_cast<uint32_t>(GALILEO_FNAV_CODES_PER_SYMBOL * GALILEO_E5A_CODE_PERIOD_MS);
+                                    }
+                                if (d_enable_navdata_monitor && !d_nav_msg_packet.nav_message.empty())
+                                    {
+                                        d_nav_msg_packet.system = std::string(1, current_symbol.System);
+                                        d_nav_msg_packet.signal = std::string(current_symbol.Signal);
+                                        d_nav_msg_packet.prn = static_cast<int32_t>(current_symbol.PRN);
+                                        d_nav_msg_packet.tow_at_current_symbol_ms = static_cast<int32_t>(d_TOW_at_current_symbol_ms);
+                                        const std::shared_ptr<Nav_Message_Packet> tmp_obj = std::make_shared<Nav_Message_Packet>(d_nav_msg_packet);
+                                        this->message_port_pub(pmt::mp("Nav_msg_from_TLM"), pmt::make_any(tmp_obj));
+                                        d_nav_msg_packet.nav_message = "";
                                     }
                                 break;
                             }
@@ -967,7 +1030,7 @@ int galileo_telemetry_decoder_gs::general_work(int noutput_items __attribute__((
             }
         }
 
-    if (d_inav_nav.get_flag_TOW_set() == true or d_fnav_nav.get_flag_TOW_set() == true or d_cnav_nav.get_flag_CRC_test() == true)
+    if (d_inav_nav.get_flag_TOW_set() == true || d_fnav_nav.get_flag_TOW_set() == true || d_cnav_nav.get_flag_CRC_test() == true)
         {
             current_symbol.TOW_at_current_symbol_ms = d_TOW_at_current_symbol_ms;
             // todo: Galileo to GPS time conversion should be moved to observable block.

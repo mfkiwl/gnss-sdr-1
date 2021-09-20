@@ -23,13 +23,16 @@
 #include "gnss_block_interface.h"
 #include "gnss_satellite.h"
 #include "gnss_synchro.h"
+#include "nav_message_packet.h"
 #include "tlm_conf.h"
+#include "tlm_crc_stats.h"
 #include <boost/circular_buffer.hpp>
 #include <gnuradio/block.h>
 #include <gnuradio/types.h>  // for gr_vector_const_void_star
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include <memory>  // for std::unique_ptr
 #include <string>
 
 /** \addtogroup Telemetry_Decoder
@@ -87,8 +90,10 @@ private:
 
     // Navigation Message variable
     Glonass_Gnav_Navigation_Message d_nav;
-
     Gnss_Satellite d_satellite;
+
+    Nav_Message_Packet d_nav_msg_packet;
+    std::unique_ptr<Tlm_CRC_Stats> d_Tlm_CRC_Stats;
 
     std::string d_dump_filename;
     std::ofstream d_dump_file;
@@ -112,6 +117,8 @@ private:
     bool d_dump;
     bool d_dump_mat;
     bool d_remove_dat;
+    bool d_enable_navdata_monitor;
+    bool d_dump_crc_stats;
 };
 
 
